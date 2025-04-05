@@ -75,21 +75,19 @@
     const chatContainer = document.getElementById("chatContainer");
     let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
 
-    function formatResponse(text) {
-      return text
-        .replace(/###\s+(.*?)\s*\n/g, '<h3>$1</h3>')
-        .replace(/##\s+(.*?)\s*\n/g, '<h2>$1</h2>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/\n/g, '<br>');
-    }
-
-    function removeMarkdown(text) {
-      return text
-        .replace(/#+\s+/g, '')
-        .replace(/\*\*/g, '')
-        .replace(/\*/g, '')
-        .replace(/\n/g, ' ');
+    function formatText(text) {
+      let lines = text.split('\n');
+      return lines.map(line => {
+        if (line.match(/^###\s+(.*)/)) {
+          return line.replace(/^###\s+(.*)/, '<h3>$1</h3>');
+        } else if (line.match(/^##\s+(.*)/)) {
+          return line.replace(/^##\s+(.*)/, '<h2>$1</h2>');
+        } else {
+          return line
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>');
+        }
+      }).join('<br>');
     }
 
     function appendMessage(text, isUser = false, isTyping = false, index = null) {
@@ -104,7 +102,7 @@
       const messageText = document.createElement("div");
       messageText.className = isTyping ? "typing" : "formatted-response";
       if (!isTyping && !isUser) {
-        messageText.innerHTML = formatResponse(text);
+        messageText.innerHTML = formatText(text);
       } else {
         messageText.textContent = text;
       }
@@ -179,17 +177,13 @@
         typingElement.parentElement.parentElement.remove();
         const aiMsg = appendMessage("", false);
 
-        // Typing animation with plain text (Markdown removed)
-        const plainTextForTyping = removeMarkdown(reply);
         let currentText = "";
-        for (let i = 0; i <= plainTextForTyping.length; i++) {
-          currentText = plainTextForTyping.slice(0, i);
-          aiMsg.textContent = currentText;
+        for (let char of reply) {
+          currentText += char;
+          aiMsg.innerHTML = formatText(currentText);
           chatContainer.scrollTop = chatContainer.scrollHeight;
           await new Promise((r) => setTimeout(r, 10));
         }
-        // Final formatted response
-        aiMsg.innerHTML = formatResponse(reply);
 
         chatHistory.push({ role: "ai", content: reply });
         localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
