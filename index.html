@@ -65,7 +65,7 @@
         class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
         onkeypress="if(event.key === 'Enter') sendMessage()" />
       <button onclick="sendMessage()"
-        class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
+        class="bg-gradient-to-r from-purple-700 to-red-500 hover:from-red-600 hover:to-purple-600 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
         Send
       </button>
     </div>
@@ -75,7 +75,6 @@
     const chatContainer = document.getElementById("chatContainer");
     let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
 
-    // Format markdown-style response
     function formatResponse(text) {
       return text
         .replace(/###\s+(.*?)(\n|$)/g, '<h3>$1</h3>')
@@ -85,7 +84,6 @@
         .replace(/\n/g, '<br>');
     }
 
-    // Append message to chat
     function appendMessage(text, isUser = false, isTyping = false) {
       const wrapper = document.createElement("div");
       wrapper.className = `my-2 flex ${isUser ? 'justify-end' : 'justify-start'} message-item`;
@@ -161,7 +159,6 @@
         typingElement.parentElement.parentElement.remove();
         const aiMsg = appendMessage("", false);
 
-        // Typewriter effect with formatted content
         let currentText = "";
         for (let i = 0; i <= reply.length; i++) {
           currentText = reply.slice(0, i);
@@ -179,7 +176,6 @@
       }
     }
 
-    // Reload history
     window.onload = () => {
       chatHistory.forEach(msg => {
         appendMessage(msg.content, msg.role === "user", false);
