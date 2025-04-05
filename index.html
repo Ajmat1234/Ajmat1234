@@ -54,6 +54,34 @@
       font-style: italic !important;
       color: #34d399 !important;
     }
+    /* Fixed Header Styles */
+    #header {
+      position: sticky;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #1f2937;
+      z-index: 1000;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #menuIcon {
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+    #newChatButton {
+      padding: 5px 10px;
+      background: #4ade80;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #newChatButton:hover {
+      background: #22c55e;
+    }
     /* Sidebar Styles */
     #conversationSidebar {
       display: none;
@@ -76,33 +104,13 @@
     #conversationSidebar div:hover {
       background: #4b5563;
     }
-    #menuIcon {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      font-size: 1.5rem;
-      cursor: pointer;
-      z-index: 1001;
-    }
-    #newChatButton {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      padding: 5px 10px;
-      background: #4ade80;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #newChatButton:hover {
-      background: #22c55e;
-    }
   </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col">
-  <div id="menuIcon" onclick="toggleSidebar()">☰</div>
-  <button id="newChatButton" onclick="startNewChat()">New Chat</button>
+  <div id="header">
+    <div id="menuIcon" onclick="toggleSidebar()">☰</div>
+    <button id="newChatButton" onclick="startNewChat()">New Chat</button>
+  </div>
   <div class="flex-1 p-4 overflow-y-auto" id="chatContainer"></div>
 
   <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
@@ -223,11 +231,13 @@
         const sidebar = document.getElementById('conversationSidebar');
         sidebar.innerHTML = '';
         data.conversations.forEach(conv => {
-          const item = document.createElement('div');
-          item.textContent = conv.messages[0]?.replace('User: ', '').slice(0, 20) + '...' || `Conv ${conv.id.slice(0, 8)}`;
-          item.setAttribute('data-id', conv.id);
-          item.onclick = () => loadConversation(conv.id);
-          sidebar.appendChild(item);
+          if (conv.messages.length > 0) { // Only show conversations with messages
+            const item = document.createElement('div');
+            item.textContent = conv.messages[0].replace('User: ', '').slice(0, 20) + '...' || `Conv ${conv.id.slice(0, 8)}`;
+            item.setAttribute('data-id', conv.id);
+            item.onclick = () => loadConversation(conv.id);
+            sidebar.appendChild(item);
+          }
         });
       } catch (err) {
         const sidebar = document.getElementById('conversationSidebar');
@@ -270,7 +280,6 @@
       localStorage.removeItem('currentConversationId');
       const chatContainer = document.getElementById('chatContainer');
       chatContainer.innerHTML = '';
-      appendMessage("JARVIS: ## स्वागत है!\nमैं आपका दोस्त JARVIS हूँ। कुछ पूछें!", false);
     }
 
     async function sendMessage() {
@@ -284,10 +293,11 @@
       if (isGenerating) {
         if (abortController) {
           abortController.abort();
+          isGenerating = false;
+          sendButton.textContent = 'Send';
+          appendMessage("Response roka gaya.", false);
+          return;
         }
-        isGenerating = false;
-        sendButton.textContent = 'Send';
-        return;
       }
 
       const userIndex = chatHistory.length;
@@ -314,7 +324,7 @@
 
         const data = await res.json();
         const reply = data.reply;
-        conversationId = data.conversation_id; // Update with new or existing ID
+        conversationId = data.conversation_id;
         localStorage.setItem('currentConversationId', conversationId);
 
         typingElement.parentElement.parentElement.remove();
@@ -322,6 +332,7 @@
 
         let currentText = "";
         for (let char of reply) {
+          if (!isGenerating) break; // Stopped mid-response
           currentText += char;
           aiMsg.innerHTML = formatText(currentText);
           chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -333,6 +344,7 @@
 
       } catch (err) {
         if (err.name === 'AbortError') {
+          typingElement.parentElement.parentElement.remove();
           appendMessage("Response roka gaya.", false);
         } else {
           typingElement.parentElement.parentElement.remove();
@@ -346,9 +358,7 @@
     }
 
     window.onload = () => {
-      if (chatHistory.length === 0) {
-        startNewChat();
-      } else {
+      if (chatHistory.length > 0) {
         chatHistory.forEach((msg, index) => {
           appendMessage(msg.content, msg.role === "user", false, index);
         });
