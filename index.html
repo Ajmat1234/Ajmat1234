@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JARVIS Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -19,7 +19,7 @@
       width: 6px;
     }
     ::-webkit-scrollbar-thumb {
-      background: #9333ea;
+      background: #555;
       border-radius: 10px;
     }
     .copy-notification {
@@ -56,16 +56,16 @@
     }
   </style>
 </head>
-<body class="bg-black text-white min-h-screen flex flex-col font-sans">
+<body class="bg-black text-white min-h-screen flex flex-col">
   <div class="flex-1 p-4 overflow-y-auto" id="chatContainer"></div>
 
-  <div class="p-4 bg-gradient-to-r from-purple-950 to-gray-900 sticky bottom-0 z-10">
+  <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
     <div class="flex items-center">
       <input id="userInput" type="text" placeholder="Ask anything..."
-        class="flex-1 px-4 py-2 rounded-l-full bg-gray-800 border border-purple-800 text-white outline-none focus:border-purple-500"
+        class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
         onkeypress="if(event.key === 'Enter') sendMessage()" />
       <button onclick="sendMessage()"
-        class="bg-gradient-to-r from-pink-600 to-purple-700 hover:from-purple-800 hover:to-pink-700 px-4 py-2 rounded-r-full text-white font-semibold transition duration-300 ease-in-out">
+        class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
         Send
       </button>
     </div>
@@ -77,11 +77,19 @@
 
     function formatResponse(text) {
       return text
-        .replace(/###\s+(.*?)(\n|$)/g, '<h3>$1</h3>')
-        .replace(/##\s+(.*?)(\n|$)/g, '<h2>$1</h2>')
+        .replace(/###\s+(.*?)\s*\n/g, '<h3>$1</h3>')
+        .replace(/##\s+(.*?)\s*\n/g, '<h2>$1</h2>')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/\n/g, '<br>');
+    }
+
+    function removeMarkdown(text) {
+      return text
+        .replace(/#+\s+/g, '')
+        .replace(/\*\*/g, '')
+        .replace(/\*/g, '')
+        .replace(/\n/g, ' ');
     }
 
     function appendMessage(text, isUser = false, isTyping = false, index = null) {
@@ -89,8 +97,8 @@
       wrapper.className = `my-2 flex ${isUser ? 'justify-end' : 'justify-start'} message-item`;
 
       const msg = document.createElement("div");
-      msg.className = `relative p-3 rounded-xl max-w-[75%] whitespace-pre-wrap break-words select-text text-sm md:text-base ${
-        isUser ? 'bg-gradient-to-tr from-purple-800 to-purple-600 text-white' : 'bg-white/5 text-white'
+      msg.className = `relative p-3 rounded-2xl max-w-[70%] whitespace-pre-wrap break-words select-text text-sm md:text-base shadow-lg ${
+        isUser ? 'bg-white/10 text-white rounded-br-none' : 'bg-white/5 text-white rounded-bl-none'
       }`;
 
       const messageText = document.createElement("div");
@@ -102,10 +110,10 @@
       }
 
       const actions = document.createElement("div");
-      actions.className = "text-xs mt-1 text-gray-400 flex gap-3";
+      actions.className = "text-xs mt-1 text-gray-400 flex gap-2";
 
       let actionButtons = `
-        <button onclick="copyToClipboard(this)" data-text="${text.replace(/"/g, '&quot;')}" 
+        <button onclick="copyToClipboard(this)" data-text="${text.replace(/"/g, '"')}" 
           class="hover:text-purple-400 transition-colors">Copy</button>
         <button onclick="toggleLike(this)" 
           class="hover:text-pink-400 transition-colors">Like</button>
@@ -171,13 +179,16 @@
         typingElement.parentElement.parentElement.remove();
         const aiMsg = appendMessage("", false);
 
+        // Typing animation with plain text (Markdown removed)
+        const plainTextForTyping = removeMarkdown(reply);
         let currentText = "";
-        for (let i = 0; i <= reply.length; i++) {
-          currentText = reply.slice(0, i);
+        for (let i = 0; i <= plainTextForTyping.length; i++) {
+          currentText = plainTextForTyping.slice(0, i);
           aiMsg.textContent = currentText;
           chatContainer.scrollTop = chatContainer.scrollHeight;
           await new Promise((r) => setTimeout(r, 10));
         }
+        // Final formatted response
         aiMsg.innerHTML = formatResponse(reply);
 
         chatHistory.push({ role: "ai", content: reply });
