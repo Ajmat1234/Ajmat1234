@@ -23,15 +23,31 @@
       background: #555;
       border-radius: 10px;
     }
+    
+    .copy-notification {
+      animation: slideIn 0.3s ease-out;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+    
+    .liked {
+      color: #ec4899 !important;
+      transform: scale(1.2);
+      transition: all 0.3s ease;
+    }
   </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col">
   <div class="flex-1 p-4 overflow-y-auto" id="chatContainer"></div>
 
-  <div class="p-4 bg-gray-900 sticky bottom-0">
+  <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
     <div class="flex items-center">
       <input id="userInput" type="text" placeholder="Ask anything..."
-        class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none" />
+        class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500" 
+        onkeypress="if(event.key === 'Enter') sendMessage()" />
       <button onclick="sendMessage()"
         class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
         Send
@@ -41,40 +57,74 @@
 
   <script>
     const chatContainer = document.getElementById("chatContainer");
-    const chatHistory = [];
+    let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
 
-    function appendMessage(text, isUser = false, isTyping = false) {
+    // Load previous chat on startup
+    window.onload = () => {
+      chatHistory.forEach(msg => {
+        appendMessage(msg.content, msg.role === "user", false, true);
+      });
+    };
+
+    function formatResponse(text) {
+      return text
+        .replace(/##\s+(.*?)(\n|$)/g, '<h2 class="text-xl font-bold mt-4 mb-2 text-purple-400">$1</h2>')
+        .replace(/###\s+(.*?)(\n|$)/g, '<h3 class="text-lg font-semibold mt-3 mb-1 text-blue-300">$1</h3>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-medium">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+        .replace(/\n/g, '<br>');
+    }
+
+    function appendMessage(text, isUser = false, isTyping = false, isHistory = false) {
       const wrapper = document.createElement("div");
-      wrapper.className = `my-2 flex ${isUser ? 'justify-end' : 'justify-start'}`;
+      wrapper.className = `my-2 flex ${isUser ? 'justify-end' : 'justify-start'} message-item`;
 
       const msg = document.createElement("div");
       msg.className = `relative p-3 rounded-2xl max-w-[70%] whitespace-pre-wrap break-words select-text text-sm md:text-base shadow-lg ${
         isUser ? 'bg-white/10 text-white rounded-br-none' : 'bg-white/5 text-white rounded-bl-none'
       }`;
 
-      const messageText = document.createElement("span");
-      messageText.className = isTyping ? "typing" : "";
-      messageText.textContent = text;
+      const messageText = document.createElement("div");
+      messageText.className = isTyping ? "typing" : "formatted-response";
+      if (!isTyping && !isUser) messageText.innerHTML = formatResponse(text);
 
       const actions = document.createElement("div");
       actions.className = "text-xs mt-1 text-gray-400 flex gap-2";
       actions.innerHTML = `
-        <button onclick="copyToClipboard(\`${text}\`)" class="hover:underline">Copy</button>
-        <button class="hover:underline">Like</button>
+        <button onclick="copyToClipboard(this)" data-text="${text.replace(/"/g, '&quot;')}" 
+          class="hover:text-purple-400 transition-colors">Copy</button>
+        <button onclick="toggleLike(this)" 
+          class="hover:text-pink-400 transition-colors">Like</button>
       `;
 
+      if (isTyping) messageText.textContent = text;
       msg.appendChild(messageText);
-      msg.appendChild(actions);
+      if (!isTyping) msg.appendChild(actions);
       wrapper.appendChild(msg);
-      chatContainer.appendChild(wrapper);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
+      
+      if (!isHistory) {
+        chatContainer.appendChild(wrapper);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
 
       return messageText;
     }
 
-    function copyToClipboard(text) {
-      navigator.clipboard.writeText(text);
-      alert("Copied to clipboard!");
+    function copyToClipboard(button) {
+      const text = button.getAttribute('data-text');
+      navigator.clipboard.writeText(text).then(() => {
+        const notification = document.createElement('div');
+        notification.textContent = '✓ Copied!';
+        notification.className = 'fixed bottom-20 right-4 bg-green-500/90 text-white px-4 py-2 rounded-lg text-sm copy-notification';
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 2000);
+      }).catch(err => {
+        console.error('Copy failed:', err);
+      });
+    }
+
+    function toggleLike(button) {
+      button.classList.toggle('liked');
     }
 
     async function sendMessage() {
@@ -84,6 +134,7 @@
 
       appendMessage(userMsg, true);
       chatHistory.push({ role: "user", content: userMsg });
+      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
       input.value = "";
 
       const typingElement = appendMessage("Thinking", false, true);
@@ -99,18 +150,21 @@
         const reply = data.reply;
 
         typingElement.parentElement.parentElement.remove();
-        const aiMsg = appendMessage("", false);
+        const aiMsg = appendMessage(reply, false);
 
+        // Typewriter effect
         for (let i = 0; i <= reply.length; i++) {
-          aiMsg.textContent = reply.slice(0, i);
+          aiMsg.innerHTML = formatResponse(reply.slice(0, i));
           chatContainer.scrollTop = chatContainer.scrollHeight;
           await new Promise((r) => setTimeout(r, 10));
         }
+        
         chatHistory.push({ role: "ai", content: reply });
+        localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
 
       } catch (err) {
         typingElement.parentElement.parentElement.remove();
-        appendMessage("Error: Unable to connect.");
+        appendMessage("Error: Unable to connect.", false);
       }
     }
   </script>
