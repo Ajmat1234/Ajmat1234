@@ -172,12 +172,13 @@
         const aiMsg = appendMessage("", false);
 
         let currentText = "";
-        for (let i = 0; i <= reply.length; i++) {
-          currentText = reply.slice(0, i);
-          aiMsg.innerHTML = formatResponse(currentText);
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-          await new Promise((r) => setTimeout(r, 10));
-        }
+for (let i = 0; i <= reply.length; i++) {
+  currentText = reply.slice(0, i);
+  aiMsg.textContent = currentText;
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+  await new Promise((r) => setTimeout(r, 10));
+}
+aiMsg.innerHTML = formatResponse(reply);
 
         chatHistory.push({ role: "ai", content: reply });
         localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
