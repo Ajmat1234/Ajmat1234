@@ -54,9 +54,40 @@
       font-style: italic !important;
       color: #34d399 !important;
     }
+    /* Sidebar Styles */
+    #conversationSidebar {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 250px;
+      height: 100%;
+      background: #1f2937;
+      padding: 20px;
+      z-index: 1000;
+      color: white;
+      overflow-y: auto;
+    }
+    #conversationSidebar div {
+      padding: 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #374151;
+    }
+    #conversationSidebar div:hover {
+      background: #4b5563;
+    }
+    #menuIcon {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 1.5rem;
+      cursor: pointer;
+      z-index: 1001;
+    }
   </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col">
+  <div id="menuIcon" onclick="toggleSidebar()">☰</div>
   <div class="flex-1 p-4 overflow-y-auto" id="chatContainer"></div>
 
   <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
@@ -64,16 +95,23 @@
       <input id="userInput" type="text" placeholder="Ask anything..."
         class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
         onkeypress="if(event.key === 'Enter') sendMessage()" />
-      <button onclick="sendMessage()"
+      <button id="sendButton" onclick="sendMessage()"
         class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
         Send
       </button>
     </div>
   </div>
 
+  <div id="conversationSidebar">
+    <!-- Conversations list yahan aayegi -->
+  </div>
+
   <script>
     const chatContainer = document.getElementById("chatContainer");
     let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+    let currentConversationId = localStorage.getItem('currentConversationId') || null;
+    let isGenerating = false;
+    let abortController = null;
 
     function formatText(text) {
       let lines = text.split('\n');
@@ -151,10 +189,65 @@
       location.reload();
     }
 
+    function toggleSidebar() {
+      const sidebar = document.getElementById('conversationSidebar');
+      sidebar.style.display = sidebar.style.display === 'block' ? 'none' : 'block';
+      if (sidebar.style.display === 'block') {
+        fetchConversations();
+      }
+    }
+
+    async function fetchConversations() {
+      const userId = document.cookie.split('; ').find(row => row.startsWith('user_id=')).split('=')[1];
+      const res = await fetch(`https://practice-tvk1.onrender.com/get_conversations`, {
+        method: 'GET',
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await res.json();
+      const sidebar = document.getElementById('conversationSidebar');
+      sidebar.innerHTML = '';
+      data.conversations.forEach(conv => {
+        const item = document.createElement('div');
+        item.textContent = conv.messages[0]?.replace('User: ', '').slice(0, 20) + '...' || `Conv ${conv.id.slice(0, 8)}`;
+        item.setAttribute('data-id', conv.id);
+        item.onclick = () => loadConversation(conv.id);
+        sidebar.appendChild(item);
+      });
+    }
+
+    async function loadConversation(conversationId) {
+      const res = await fetch(`https://practice-tvk1.onrender.com/chat`, {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: '', conversation_id: conversationId })
+      });
+      const data = await res.json();
+      chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+      localStorage.setItem('currentConversationId', conversationId);
+      const chatContainer = document.getElementById('chatContainer');
+      chatContainer.innerHTML = '';
+      chatHistory.forEach((msg, index) => {
+        appendMessage(msg.content, msg.role === "user", false, index);
+      });
+      document.getElementById('conversationSidebar').style.display = 'none';
+    }
+
     async function sendMessage() {
       const input = document.getElementById("userInput");
       const userMsg = input.value.trim();
       if (!userMsg) return;
+
+      const sendButton = document.getElementById('sendButton');
+      let conversationId = localStorage.getItem('currentConversationId') || null;
+
+      if (isGenerating) {
+        if (abortController) {
+          abortController.abort();
+        }
+        isGenerating = false;
+        sendButton.textContent = 'Send';
+        return;
+      }
 
       const userIndex = chatHistory.length;
       appendMessage(userMsg, true, false, userIndex);
@@ -165,14 +258,23 @@
       const typingElement = appendMessage("Thinking", false, true);
 
       try {
+        isGenerating = true;
+        abortController = new AbortController();
+        const signal = abortController.signal;
+
+        sendButton.textContent = 'Stop';
+
         const res = await fetch("https://practice-tvk1.onrender.com/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: userMsg }),
+          body: JSON.stringify({ message: userMsg, conversation_id: conversationId }),
+          signal: signal
         });
 
         const data = await res.json();
         const reply = data.reply;
+        conversationId = data.conversation_id; // Update with new or existing ID
+        localStorage.setItem('currentConversationId', conversationId);
 
         typingElement.parentElement.parentElement.remove();
         const aiMsg = appendMessage("", false);
@@ -189,8 +291,16 @@
         localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
 
       } catch (err) {
-        typingElement.parentElement.parentElement.remove();
-        appendMessage("Error: Unable to connect.", false);
+        if (err.name === 'AbortError') {
+          appendMessage("Response roka gaya.", false);
+        } else {
+          typingElement.parentElement.parentElement.remove();
+          appendMessage("Error: Connection nahi ho paya.", false);
+        }
+      } finally {
+        isGenerating = false;
+        abortController = null;
+        sendButton.textContent = 'Send';
       }
     }
 
