@@ -54,7 +54,6 @@
       font-style: italic !important;
       color: #34d399 !important;
     }
-    /* Fixed Header Styles */
     #header {
       position: sticky;
       top: 0;
@@ -82,7 +81,6 @@
     #newChatButton:hover {
       background: #22c55e;
     }
-    /* Sidebar Styles */
     #conversationSidebar {
       display: none;
       position: fixed;
@@ -126,6 +124,9 @@
   </div>
 
   <div id="conversationSidebar">
+    <div style="text-align: right; padding: 10px;">
+      <button onclick="toggleSidebar()" style="background: #ff4444; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; color: white;">Close</button>
+    </div>
     <!-- Conversations list yahan aayegi -->
   </div>
 
@@ -221,7 +222,7 @@
     }
 
     async function fetchConversations() {
-      const userId = document.cookie.split('; ').find(row => row.startsWith('user_id=')).split('=')[1];
+      const userId = document.cookie.split('; ').find(row => row.startsWith('user_id='))?.split('=')[1];
       try {
         const res = await fetch(`https://practice-tvk1.onrender.com/get_conversations`, {
           method: 'GET',
@@ -229,9 +230,9 @@
         });
         const data = await res.json();
         const sidebar = document.getElementById('conversationSidebar');
-        sidebar.innerHTML = '';
+        sidebar.innerHTML = '<div style="text-align: right; padding: 10px;"><button onclick="toggleSidebar()" style="background: #ff4444; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; color: white;">Close</button></div>';
         data.conversations.forEach(conv => {
-          if (conv.messages.length > 0) { // Only show conversations with messages
+          if (conv.messages.length > 0) {
             const item = document.createElement('div');
             item.textContent = conv.messages[0].replace('User: ', '').slice(0, 20) + '...' || `Conv ${conv.id.slice(0, 8)}`;
             item.setAttribute('data-id', conv.id);
@@ -241,7 +242,7 @@
         });
       } catch (err) {
         const sidebar = document.getElementById('conversationSidebar');
-        sidebar.innerHTML = '<div>चैट लोड करने में त्रुटि हुई।</div>';
+        sidebar.innerHTML = '<div style="text-align: right; padding: 10px;"><button onclick="toggleSidebar()" style="background: #ff4444; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; color: white;">Close</button></div><div>चैट लोड करने में त्रुटि हुई।</div>';
       }
     }
 
@@ -263,23 +264,24 @@
     }
 
     async function startNewChat() {
-      // Purani chat ko save karo agar hai
       if (chatHistory.length > 0 && currentConversationId) {
         const res = await fetch(`https://practice-tvk1.onrender.com/chat`, {
           method: 'POST',
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: '', conversation_id: currentConversationId })
         });
-        await res.json(); // Save karne ke liye
+        await res.json();
       }
-
-      // Nayi chat shuru karo
       chatHistory = [];
       currentConversationId = null;
       localStorage.removeItem('chatHistory');
       localStorage.removeItem('currentConversationId');
       const chatContainer = document.getElementById('chatContainer');
       chatContainer.innerHTML = '';
+      const sidebar = document.getElementById('conversationSidebar');
+      if (sidebar.style.display === 'block') {
+        await fetchConversations();
+      }
     }
 
     async function sendMessage() {
@@ -295,6 +297,8 @@
           abortController.abort();
           isGenerating = false;
           sendButton.textContent = 'Send';
+          const typingElement = document.querySelector('.typing');
+          if (typingElement) typingElement.parentElement.parentElement.remove();
           appendMessage("Response roka gaya.", false);
           return;
         }
@@ -332,7 +336,7 @@
 
         let currentText = "";
         for (let char of reply) {
-          if (!isGenerating) break; // Stopped mid-response
+          if (!isGenerating) break;
           currentText += char;
           aiMsg.innerHTML = formatText(currentText);
           chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -344,8 +348,7 @@
 
       } catch (err) {
         if (err.name === 'AbortError') {
-          typingElement.parentElement.parentElement.remove();
-          appendMessage("Response roka gaya.", false);
+          // Handled above
         } else {
           typingElement.parentElement.parentElement.remove();
           appendMessage("Error: Connection nahi ho paya.", false);
