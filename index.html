@@ -38,6 +38,30 @@
       transform: scale(1.2);
       transition: all 0.3s ease;
     }
+
+    .formatted-response h2 {
+      font-size: 1.25rem !important;
+      font-weight: 700 !important;
+      color: #a855f7 !important;
+      margin: 1rem 0 0.5rem !important;
+    }
+
+    .formatted-response h3 {
+      font-size: 1.125rem !important;
+      font-weight: 600 !important;
+      color: #60a5fa !important;
+      margin: 0.75rem 0 0.25rem !important;
+    }
+
+    .formatted-response strong {
+      font-weight: 500 !important;
+      color: #f472b6 !important;
+    }
+
+    .formatted-response em {
+      font-style: italic !important;
+      color: #34d399 !important;
+    }
   </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col">
@@ -46,7 +70,7 @@
   <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
     <div class="flex items-center">
       <input id="userInput" type="text" placeholder="Ask anything..."
-        class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500" 
+        class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
         onkeypress="if(event.key === 'Enter') sendMessage()" />
       <button onclick="sendMessage()"
         class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
@@ -59,19 +83,20 @@
     const chatContainer = document.getElementById("chatContainer");
     let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
 
-    // Load previous chat on startup
+    // Load chat history
     window.onload = () => {
       chatHistory.forEach(msg => {
         appendMessage(msg.content, msg.role === "user", false, true);
       });
+      chatContainer.scrollTop = chatContainer.scrollHeight;
     };
 
     function formatResponse(text) {
       return text
-        .replace(/##\s+(.*?)(\n|$)/g, '<h2 class="text-xl font-bold mt-4 mb-2 text-purple-400">$1</h2>')
-        .replace(/###\s+(.*?)(\n|$)/g, '<h3 class="text-lg font-semibold mt-3 mb-1 text-blue-300">$1</h3>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-medium">$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+        .replace(/##\s+(.*?)(\n|$)/g, '<h2>$1</h2>')
+        .replace(/###\s+(.*?)(\n|$)/g, '<h3>$1</h3>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/\n/g, '<br>');
     }
 
@@ -87,6 +112,7 @@
       const messageText = document.createElement("div");
       messageText.className = isTyping ? "typing" : "formatted-response";
       if (!isTyping && !isUser) messageText.innerHTML = formatResponse(text);
+      else if (isTyping) messageText.textContent = text;
 
       const actions = document.createElement("div");
       actions.className = "text-xs mt-1 text-gray-400 flex gap-2";
@@ -97,11 +123,10 @@
           class="hover:text-pink-400 transition-colors">Like</button>
       `;
 
-      if (isTyping) messageText.textContent = text;
       msg.appendChild(messageText);
       if (!isTyping) msg.appendChild(actions);
       wrapper.appendChild(msg);
-      
+
       if (!isHistory) {
         chatContainer.appendChild(wrapper);
         chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -118,8 +143,6 @@
         notification.className = 'fixed bottom-20 right-4 bg-green-500/90 text-white px-4 py-2 rounded-lg text-sm copy-notification';
         document.body.appendChild(notification);
         setTimeout(() => notification.remove(), 2000);
-      }).catch(err => {
-        console.error('Copy failed:', err);
       });
     }
 
@@ -153,8 +176,10 @@
         const aiMsg = appendMessage(reply, false);
 
         // Typewriter effect
+        let currentText = "";
         for (let i = 0; i <= reply.length; i++) {
-          aiMsg.innerHTML = formatResponse(reply.slice(0, i));
+          currentText = reply.slice(0, i);
+          aiMsg.innerHTML = formatResponse(currentText);
           chatContainer.scrollTop = chatContainer.scrollHeight;
           await new Promise((r) => setTimeout(r, 10));
         }
