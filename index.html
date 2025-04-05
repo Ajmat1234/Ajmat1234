@@ -65,7 +65,7 @@
         class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
         onkeypress="if(event.key === 'Enter') sendMessage()" />
       <button onclick="sendMessage()"
-        class="bg-gradient-to-r from-purple-700 to-red-500 hover:from-red-600 hover:to-purple-600 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
+        class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
         Send
       </button>
     </div>
@@ -84,7 +84,7 @@
         .replace(/\n/g, '<br>');
     }
 
-    function appendMessage(text, isUser = false, isTyping = false) {
+    function appendMessage(text, isUser = false, isTyping = false, index = null) {
       const wrapper = document.createElement("div");
       wrapper.className = `my-2 flex ${isUser ? 'justify-end' : 'justify-start'} message-item`;
 
@@ -103,12 +103,17 @@
 
       const actions = document.createElement("div");
       actions.className = "text-xs mt-1 text-gray-400 flex gap-2";
-      actions.innerHTML = `
+
+      let actionButtons = `
         <button onclick="copyToClipboard(this)" data-text="${text.replace(/"/g, '&quot;')}" 
           class="hover:text-purple-400 transition-colors">Copy</button>
         <button onclick="toggleLike(this)" 
           class="hover:text-pink-400 transition-colors">Like</button>
       `;
+      if (isUser && index !== null) {
+        actionButtons += `<button onclick="deleteMessage(${index})" class="hover:text-red-400 transition-colors">Unsend</button>`;
+      }
+      actions.innerHTML = actionButtons;
 
       msg.appendChild(messageText);
       if (!isTyping) msg.appendChild(actions);
@@ -134,12 +139,19 @@
       button.classList.toggle('liked');
     }
 
+    function deleteMessage(index) {
+      chatHistory.splice(index, 1);
+      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+      location.reload();
+    }
+
     async function sendMessage() {
       const input = document.getElementById("userInput");
       const userMsg = input.value.trim();
       if (!userMsg) return;
 
-      appendMessage(userMsg, true);
+      const userIndex = chatHistory.length;
+      appendMessage(userMsg, true, false, userIndex);
       chatHistory.push({ role: "user", content: userMsg });
       localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
       input.value = "";
@@ -177,8 +189,8 @@
     }
 
     window.onload = () => {
-      chatHistory.forEach(msg => {
-        appendMessage(msg.content, msg.role === "user", false);
+      chatHistory.forEach((msg, index) => {
+        appendMessage(msg.content, msg.role === "user", false, index);
       });
     };
   </script>
