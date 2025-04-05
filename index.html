@@ -1,109 +1,118 @@
-<!DOCTYPE html><html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ChatGPT Style Chat</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      .typing::after {
-        content: "...";
-        animation: dots 1.5s steps(3, end) infinite;
-      }@keyframes dots {
-    0%, 20% {
-      content: ".";
-    }
-    40% {
-      content: "..";
-    }
-    60% {
-      content: "...";
-    }
-    100% {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JARVIS Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .typing::after {
       content: "";
+      animation: dots 1s steps(3, end) infinite;
     }
-  }
+    @keyframes dots {
+      0% { content: "."; }
+      33% { content: ".."; }
+      66% { content: "..."; }
+    }
 
-  ::-webkit-scrollbar {
-    width: 6px;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #555;
-    border-radius: 10px;
-  }
-</style>
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #555;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body class="bg-black text-white min-h-screen flex flex-col">
+  <div class="flex-1 p-4 overflow-y-auto" id="chatContainer"></div>
 
-  </head>
-  <body class="bg-black text-white min-h-screen flex flex-col">
-    <div class="flex-1 p-4 overflow-y-auto" id="chatContainer">
-      <!-- Messages will appear here -->
+  <div class="p-4 bg-gray-900 sticky bottom-0">
+    <div class="flex items-center">
+      <input id="userInput" type="text" placeholder="Ask anything..."
+        class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none" />
+      <button onclick="sendMessage()"
+        class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
+        Send
+      </button>
     </div>
-    <div class="p-4 bg-gray-900 sticky bottom-0">
-      <div class="flex">
-        <input
-          id="userInput"
-          type="text"
-          placeholder="Ask anything"
-          class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white"
-        />
-        <button
-          onclick="sendMessage()"
-          class="bg-blue-600 px-4 py-2 rounded-r hover:bg-blue-700"
-        >
-          Send
-        </button>
-      </div>
-    </div><script>
-  const chatContainer = document.getElementById("chatContainer");
+  </div>
 
-  function appendMessage(text, isUser = false, isTyping = false) {
-    const msg = document.createElement("div");
-    msg.className = `my-2 p-3 rounded max-w-xl whitespace-pre-wrap break-words select-text ${
-      isUser
-        ? "bg-white/10 self-end ml-auto"
-        : "bg-gray-800 self-start mr-auto"
-    }`;
-    msg.innerHTML = `<span class="${isTyping ? 'typing' : ''}">${text}</span>`;
+  <script>
+    const chatContainer = document.getElementById("chatContainer");
+    const chatHistory = [];
 
-    chatContainer.appendChild(msg);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+    function appendMessage(text, isUser = false, isTyping = false) {
+      const wrapper = document.createElement("div");
+      wrapper.className = `my-2 flex ${isUser ? 'justify-end' : 'justify-start'}`;
 
-    return msg;
-  }
+      const msg = document.createElement("div");
+      msg.className = `relative p-3 rounded-2xl max-w-[70%] whitespace-pre-wrap break-words select-text text-sm md:text-base shadow-lg ${
+        isUser ? 'bg-white/10 text-white rounded-br-none' : 'bg-white/5 text-white rounded-bl-none'
+      }`;
 
-  async function sendMessage() {
-    const input = document.getElementById("userInput");
-    const userMsg = input.value.trim();
-    if (!userMsg) return;
+      const messageText = document.createElement("span");
+      messageText.className = isTyping ? "typing" : "";
+      messageText.textContent = text;
 
-    appendMessage(userMsg, true);
-    input.value = "";
+      const actions = document.createElement("div");
+      actions.className = "text-xs mt-1 text-gray-400 flex gap-2";
+      actions.innerHTML = `
+        <button onclick="copyToClipboard(\`${text}\`)" class="hover:underline">Copy</button>
+        <button class="hover:underline">Like</button>
+      `;
 
-    const thinkingMsg = appendMessage("Thinking", false, true);
+      msg.appendChild(messageText);
+      msg.appendChild(actions);
+      wrapper.appendChild(msg);
+      chatContainer.appendChild(wrapper);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
 
-    try {
-      const res = await fetch("https://practice-tvk1.onrender.com/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg }),
-      });
-
-      const data = await res.json();
-      thinkingMsg.remove();
-
-      const aiMsg = appendMessage("", false);
-      const reply = data.reply;
-
-      for (let i = 0; i <= reply.length; i++) {
-        aiMsg.firstChild.textContent = reply.slice(0, i);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-        await new Promise((r) => setTimeout(r, 10));
-      }
-    } catch (err) {
-      thinkingMsg.remove();
-      appendMessage("Error: Unable to connect.");
+      return messageText;
     }
-  }
-</script>
 
-  </body>
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text);
+      alert("Copied to clipboard!");
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById("userInput");
+      const userMsg = input.value.trim();
+      if (!userMsg) return;
+
+      appendMessage(userMsg, true);
+      chatHistory.push({ role: "user", content: userMsg });
+      input.value = "";
+
+      const typingElement = appendMessage("Thinking", false, true);
+
+      try {
+        const res = await fetch("https://practice-tvk1.onrender.com/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: userMsg }),
+        });
+
+        const data = await res.json();
+        const reply = data.reply;
+
+        typingElement.parentElement.parentElement.remove();
+        const aiMsg = appendMessage("", false);
+
+        for (let i = 0; i <= reply.length; i++) {
+          aiMsg.textContent = reply.slice(0, i);
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        chatHistory.push({ role: "ai", content: reply });
+
+      } catch (err) {
+        typingElement.parentElement.parentElement.remove();
+        appendMessage("Error: Unable to connect.");
+      }
+    }
+  </script>
+</body>
 </html>
