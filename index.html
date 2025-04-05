@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,29 +8,36 @@
       .typing::after {
         content: "...";
         animation: dots 1.5s steps(3, end) infinite;
-      }
+      }@keyframes dots {
+    0%, 20% {
+      content: ".";
+    }
+    40% {
+      content: "..";
+    }
+    60% {
+      content: "...";
+    }
+    100% {
+      content: "";
+    }
+  }
 
-      @keyframes dots {
-        0%, 20% {
-          content: ".";
-        }
-        40% {
-          content: "..";
-        }
-        60% {
-          content: "...";
-        }
-        100% {
-          content: "";
-        }
-      }
-    </style>
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 10px;
+  }
+</style>
+
   </head>
   <body class="bg-black text-white min-h-screen flex flex-col">
     <div class="flex-1 p-4 overflow-y-auto" id="chatContainer">
       <!-- Messages will appear here -->
     </div>
-    <div class="p-4 bg-gray-900">
+    <div class="p-4 bg-gray-900 sticky bottom-0">
       <div class="flex">
         <input
           id="userInput"
@@ -46,63 +52,58 @@
           Send
         </button>
       </div>
-    </div>
+    </div><script>
+  const chatContainer = document.getElementById("chatContainer");
 
-    <script>
-      const chatContainer = document.getElementById("chatContainer");
+  function appendMessage(text, isUser = false, isTyping = false) {
+    const msg = document.createElement("div");
+    msg.className = `my-2 p-3 rounded max-w-xl whitespace-pre-wrap break-words select-text ${
+      isUser
+        ? "bg-white/10 self-end ml-auto"
+        : "bg-gray-800 self-start mr-auto"
+    }`;
+    msg.innerHTML = `<span class="${isTyping ? 'typing' : ''}">${text}</span>`;
 
-      function appendMessage(text, isUser = false, isTyping = false) {
-        const msg = document.createElement("div");
-        msg.className = `my-2 p-3 rounded max-w-xl ${
-          isUser
-            ? "bg-blue-600 self-end ml-auto"
-            : "bg-gray-800 self-start mr-auto"
-        }`;
-        msg.innerHTML = `<span class="${isTyping ? 'typing' : ''}">${text}</span>`;
+    chatContainer.appendChild(msg);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 
-        chatContainer.appendChild(msg);
+    return msg;
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById("userInput");
+    const userMsg = input.value.trim();
+    if (!userMsg) return;
+
+    appendMessage(userMsg, true);
+    input.value = "";
+
+    const thinkingMsg = appendMessage("Thinking", false, true);
+
+    try {
+      const res = await fetch("https://practice-tvk1.onrender.com/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMsg }),
+      });
+
+      const data = await res.json();
+      thinkingMsg.remove();
+
+      const aiMsg = appendMessage("", false);
+      const reply = data.reply;
+
+      for (let i = 0; i <= reply.length; i++) {
+        aiMsg.firstChild.textContent = reply.slice(0, i);
         chatContainer.scrollTop = chatContainer.scrollHeight;
-
-        if (!isUser && !isTyping) {
-          const copyBtn = document.createElement("button");
-          copyBtn.textContent = "📋";
-          copyBtn.className = "ml-2 text-sm hover:underline";
-          copyBtn.onclick = () => navigator.clipboard.writeText(text);
-          msg.appendChild(copyBtn);
-        }
+        await new Promise((r) => setTimeout(r, 10));
       }
+    } catch (err) {
+      thinkingMsg.remove();
+      appendMessage("Error: Unable to connect.");
+    }
+  }
+</script>
 
-      async function sendMessage() {
-        const input = document.getElementById("userInput");
-        const userMsg = input.value.trim();
-        if (!userMsg) return;
-
-        appendMessage(userMsg, true);
-        input.value = "";
-
-        appendMessage("Thinking", false, true);
-
-        try {
-          const res = await fetch("https://practice-tvk1.onrender.com/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: userMsg }),
-          });
-
-          const data = await res.json();
-
-          // Remove typing animation
-          const last = chatContainer.lastChild;
-          chatContainer.removeChild(last);
-
-          // Use 'reply' instead of 'message'
-          appendMessage(data.reply);
-        } catch (err) {
-          const last = chatContainer.lastChild;
-          chatContainer.removeChild(last);
-          appendMessage("Error: Unable to connect.");
-        }
-      }
-    </script>
   </body>
 </html>
