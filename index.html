@@ -84,10 +84,25 @@
       cursor: pointer;
       z-index: 1001;
     }
+    #newChatButton {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 5px 10px;
+      background: #4ade80;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #newChatButton:hover {
+      background: #22c55e;
+    }
   </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col">
   <div id="menuIcon" onclick="toggleSidebar()">☰</div>
+  <button id="newChatButton" onclick="startNewChat()">New Chat</button>
   <div class="flex-1 p-4 overflow-y-auto" id="chatContainer"></div>
 
   <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
@@ -199,20 +214,25 @@
 
     async function fetchConversations() {
       const userId = document.cookie.split('; ').find(row => row.startsWith('user_id=')).split('=')[1];
-      const res = await fetch(`https://practice-tvk1.onrender.com/get_conversations`, {
-        method: 'GET',
-        headers: { "Content-Type": "application/json" }
-      });
-      const data = await res.json();
-      const sidebar = document.getElementById('conversationSidebar');
-      sidebar.innerHTML = '';
-      data.conversations.forEach(conv => {
-        const item = document.createElement('div');
-        item.textContent = conv.messages[0]?.replace('User: ', '').slice(0, 20) + '...' || `Conv ${conv.id.slice(0, 8)}`;
-        item.setAttribute('data-id', conv.id);
-        item.onclick = () => loadConversation(conv.id);
-        sidebar.appendChild(item);
-      });
+      try {
+        const res = await fetch(`https://practice-tvk1.onrender.com/get_conversations`, {
+          method: 'GET',
+          headers: { "Content-Type": "application/json" }
+        });
+        const data = await res.json();
+        const sidebar = document.getElementById('conversationSidebar');
+        sidebar.innerHTML = '';
+        data.conversations.forEach(conv => {
+          const item = document.createElement('div');
+          item.textContent = conv.messages[0]?.replace('User: ', '').slice(0, 20) + '...' || `Conv ${conv.id.slice(0, 8)}`;
+          item.setAttribute('data-id', conv.id);
+          item.onclick = () => loadConversation(conv.id);
+          sidebar.appendChild(item);
+        });
+      } catch (err) {
+        const sidebar = document.getElementById('conversationSidebar');
+        sidebar.innerHTML = '<div>चैट लोड करने में त्रुटि हुई।</div>';
+      }
     }
 
     async function loadConversation(conversationId) {
@@ -230,6 +250,27 @@
         appendMessage(msg.content, msg.role === "user", false, index);
       });
       document.getElementById('conversationSidebar').style.display = 'none';
+    }
+
+    async function startNewChat() {
+      // Purani chat ko save karo agar hai
+      if (chatHistory.length > 0 && currentConversationId) {
+        const res = await fetch(`https://practice-tvk1.onrender.com/chat`, {
+          method: 'POST',
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: '', conversation_id: currentConversationId })
+        });
+        await res.json(); // Save karne ke liye
+      }
+
+      // Nayi chat shuru karo
+      chatHistory = [];
+      currentConversationId = null;
+      localStorage.removeItem('chatHistory');
+      localStorage.removeItem('currentConversationId');
+      const chatContainer = document.getElementById('chatContainer');
+      chatContainer.innerHTML = '';
+      appendMessage("JARVIS: ## स्वागत है!\nमैं आपका दोस्त JARVIS हूँ। कुछ पूछें!", false);
     }
 
     async function sendMessage() {
@@ -305,9 +346,13 @@
     }
 
     window.onload = () => {
-      chatHistory.forEach((msg, index) => {
-        appendMessage(msg.content, msg.role === "user", false, index);
-      });
+      if (chatHistory.length === 0) {
+        startNewChat();
+      } else {
+        chatHistory.forEach((msg, index) => {
+          appendMessage(msg.content, msg.role === "user", false, index);
+        });
+      }
     };
   </script>
 </body>
