@@ -54,6 +54,21 @@
     .formatted-response strong { color: #a56ef5 !important; }
     .formatted-response em { color: #60a5fa !important; }
     .formatted-response u { color: #f87171 !important; }
+    .formatted-response blockquote {
+      border-left: 4px solid #4b5563;
+      padding-left: 1rem;
+      color: #9ca3af;
+      font-style: italic;
+      margin: 1rem 0;
+    }
+    .formatted-response pre {
+      background: #1f2937;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      font-family: monospace;
+      color: #f3f4f6;
+    }
 
     @keyframes slideInMsg {
       from { transform: translateX(20px); opacity: 0; }
@@ -125,14 +140,29 @@
     let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
 
     function formatText(text) {
-      let lines = text.split('\n');
-      return lines.map(line => {
-        if (line.match(/^###\s+(.*)/)) return line.replace(/^###\s+(.*)/, '<h3>$1</h3>');
-        if (line.match(/^##\s+(.*)/)) return line.replace(/^##\s+(.*)/, '<h2>$1</h2>');
-        return line
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>');
-      }).join('<br>');
+      // सबसे पहले HTML tags (जैसे <span>, <pre>) को 그대로 preserve करें
+      // फिर simple markdown formatting apply करें
+      let formatted = text;
+
+      // Code blocks (```code```)
+      formatted = formatted.replace(/```([\s\S]*?)```/g, (match, p1) => {
+        return `<pre>${p1.trim()}</pre>`;
+      });
+
+      // Blockquotes (lines starting with > )
+      formatted = formatted.replace(/^> (.*)$/gm, (match, p1) => {
+        return `<blockquote>${p1.trim()}</blockquote>`;
+      });
+
+      // Headings: H2 and H3
+      formatted = formatted.replace(/^##\s+(.*)$/gm, '<h2>$1</h2>');
+      formatted = formatted.replace(/^###\s+(.*)$/gm, '<h3>$1</h3>');
+
+      // Bold and Italic
+      formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+      return formatted.replace(/\n/g, '<br>');
     }
 
     function appendMessage(text, isUser = false, isTyping = false, index = null) {
