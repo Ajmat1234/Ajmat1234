@@ -343,9 +343,7 @@
         await fetchConversations();
 
       } catch (err) {
-        if (err.name === 'AbortError') {
-          // Abort handled above
-        } else {
+        if (err.name !== 'AbortError') {
           typingElement.parentElement.parentElement.remove();
           appendMessage(`Error: ${err.message}`, false);
         }
@@ -386,7 +384,7 @@
       });
       const data = await res.json();
       if (data.message) {
-        // After registration, automatically log in and show chat page.
+        // Automatically log in after registration.
         document.getElementById('loginPage').classList.add('hidden');
         document.getElementById('chatPage').classList.remove('hidden');
         fetchConversations();
@@ -400,6 +398,10 @@
         client_id: '838951504854-9qu4pdjgchigencrbc9spq68hs5s1hsj.apps.googleusercontent.com',
         scope: 'email',
         callback: async (response) => {
+          if (response.error) {
+            alert("Google login failed: " + response.error);
+            return;
+          }
           const res = await fetch('/google_login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -429,7 +431,6 @@
           fetchConversations();
         }
       } catch (e) {
-        // Default to login page if error occurs.
         document.getElementById('loginPage').classList.remove('hidden');
         document.getElementById('chatPage').classList.add('hidden');
       }
