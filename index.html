@@ -46,9 +46,9 @@
 .formatted-response h2 {
   font-size: 1.5rem !important;
   font-weight: 700 !important;
-  color: #a56ef5 !important; /* Purple */
+  color: #f472b6 !important; /* Purple */
   margin: 1.5rem 0 0.75rem !important;
-  border-bottom: 2px solid #a56ef5;
+  border-bottom: 2px solid #f472b6;
   padding-bottom: 0.25rem;
   display: inline-block;
 }
@@ -60,7 +60,7 @@
 }
 .formatted-response strong {
   font-weight: 500 !important;
-  color: #f472b6 !important; /* Pink */
+  color: #a56ef5 !important; /* Pink */
 }
 .formatted-response em {
   font-style: italic !important;
@@ -156,7 +156,7 @@
     function appendMessage(text, isUser = false, isTyping = false, index = null) {
       const wrapper = document.createElement("div");
       // Align right for user messages and left for AI messages
-      wrapper.className = `my-2 flex ${isUser ? 'justify-end' : 'justify-start'} message-item`;
+      wrapper.className = `my-2 flex flex-col items-${isUser ? 'end' : 'start'} w-full message-item`;
 
       const msg = document.createElement("div");
       // Remove full width highlight by making bubble inline-block with a max-width.
@@ -166,8 +166,8 @@ msg.style.wordBreak = "break-word";
 msg.style.whiteSpace = "pre-wrap";
 msg.className = `relative inline-block p-3 rounded-2xl select-text text-sm md:text-base shadow-lg max-w-[70%] break-words whitespace-pre-wrap ${
   isUser
-    ? 'bg-white/10 text-white rounded-br-none'
-    : 'bg-white/5 text-white rounded-bl-none'
+    ? 'bg-white/10 text-white rounded-br-none self-end'
+    : 'bg-white/5 text-white rounded-bl-none self-start'
 }`;
 
       const messageText = document.createElement("div");
