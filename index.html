@@ -6,7 +6,6 @@
   <title>JARVIS Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Typing animation */
     .typing::after {
       content: "";
       animation: dots 1s steps(3, end) infinite;
@@ -17,7 +16,6 @@
       66%  { content: "..."; }
     }
 
-    /* Scrollbar style */
     ::-webkit-scrollbar {
       width: 6px;
     }
@@ -26,7 +24,6 @@
       border-radius: 10px;
     }
 
-    /* Copy notification */
     .copy-notification {
       animation: slideIn 0.3s ease-out;
     }
@@ -35,41 +32,28 @@
       to   { transform: translateX(0); }
     }
 
-    /* Like button effect */
     .liked {
       color: #ec4899 !important;
       transform: scale(1.2);
       transition: all 0.3s ease;
     }
 
-    /* AI Response Text Formatting with more vibrant colors */
-.formatted-response h2 {
-  font-size: 1.5rem !important;
-  font-weight: 700 !important;
-  color: #f472b6 !important; /* Purple */
-  margin: 1.5rem 0 0.75rem !important;
-  border-bottom: 2px solid #f472b6;
-  padding-bottom: 0.25rem;
-  display: inline-block;
-}
-.formatted-response h3 {
-  font-size: 1.25rem !important;
-  font-weight: 600 !important;
-  color: #34d399 !important; /* Bright green */
-  margin: 1rem 0 0.5rem !important;
-}
-.formatted-response strong {
-  font-weight: 500 !important;
-  color: #a56ef5 !important; /* Pink */
-}
-.formatted-response em {
-  font-style: italic !important;
-  color: #60a5fa !important; /* Blue */
-}
-.formatted-response u {
-  text-decoration: underline !important;
-  color: #f87171 !important; /* Soft Red */
-}
+    .formatted-response h2 {
+      font-size: 1.5rem !important;
+      color: #f472b6 !important;
+      margin: 1.5rem 0 0.75rem !important;
+      border-bottom: 2px solid #f472b6;
+      padding-bottom: 0.25rem;
+      display: inline-block;
+    }
+    .formatted-response h3 {
+      font-size: 1.25rem !important;
+      color: #34d399 !important;
+      margin: 1rem 0 0.5rem !important;
+    }
+    .formatted-response strong { color: #a56ef5 !important; }
+    .formatted-response em { color: #60a5fa !important; }
+    .formatted-response u { color: #f87171 !important; }
 
     @keyframes slideInMsg {
       from { transform: translateX(20px); opacity: 0; }
@@ -79,16 +63,13 @@
       animation: slideInMsg 0.3s ease-out;
     }
 
-    /* Watermark fixed in the background */
     .watermark {
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      pointer-events: none;  /* Prevent interfering with clicks */
       opacity: 0.02;
       z-index: 0;
-      text-align: center;
     }
     .watermark h1 {
       font-size: 6rem;
@@ -99,11 +80,17 @@
       font-size: 0.8rem;
       margin-top: 0.5rem;
     }
+
+    /* यूजर मैसेज के लिए नई स्टाइल */
+    .user-bubble {
+      max-width: fit-content !important;
+      margin-left: auto !important;
+      margin-right: 15px !important;
+    }
   </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col relative">
 
-  <!-- Fixed Watermark (stays in one place in the background) -->
   <div class="watermark">
     <h1>JARVIS</h1>
     <span>developed by Ajmat</span>
@@ -111,7 +98,6 @@
 
   <div class="fixed top-0 left-0 right-0 bg-gray-900 p-2 z-20 flex justify-between items-center">
     <h1 class="text-lg font-bold">JARVIS Chat</h1>
-    <!-- New Chat button with Dark Red color -->
     <button onclick="startNewChat()" class="bg-red-700 hover:bg-red-800 px-3 py-1 rounded text-white text-sm">
       New Chat
     </button>
@@ -141,59 +127,43 @@
     function formatText(text) {
       let lines = text.split('\n');
       return lines.map(line => {
-        if (line.match(/^###\s+(.*)/)) {
-          return line.replace(/^###\s+(.*)/, '<h3>$1</h3>');
-        } else if (line.match(/^##\s+(.*)/)) {
-          return line.replace(/^##\s+(.*)/, '<h2>$1</h2>');
-        } else {
-          return line
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>');
-        }
+        if (line.match(/^###\s+(.*)/)) return line.replace(/^###\s+(.*)/, '<h3>$1</h3>');
+        if (line.match(/^##\s+(.*)/)) return line.replace(/^##\s+(.*)/, '<h2>$1</h2>');
+        return line
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>');
       }).join('<br>');
     }
 
     function appendMessage(text, isUser = false, isTyping = false, index = null) {
-  const wrapper = document.createElement("div");
-  wrapper.className = `my-2 flex flex-col ${isUser ? 'items-end' : 'items-start'} w-full message-item`;
+      const wrapper = document.createElement("div");
+      wrapper.className = `my-2 flex flex-col ${isUser ? 'items-end' : 'items-start'} w-full message-item`;
 
-  const msg = document.createElement("div");
-  msg.className = `relative p-3 rounded-2xl select-text text-sm md:text-base shadow-lg break-words whitespace-pre-wrap ${
-    isUser 
-      ? 'bg-white/10 text-white rounded-br-none ml-auto max-w-[80%]' 
-      : 'bg-white/5 text-white rounded-bl-none max-w-[80%]'
-  }`;
+      const msg = document.createElement("div");
+      msg.className = `relative p-3 rounded-2xl select-text text-sm md:text-base shadow-lg break-words whitespace-pre-wrap ${
+        isUser 
+          ? 'bg-white/10 text-white rounded-br-none ml-auto user-bubble' 
+          : 'bg-white/5 text-white rounded-bl-none max-w-[80%]'
+      }`;
 
-  const messageText = document.createElement("div");
-  messageText.className = isTyping ? "typing" : "formatted-response";
+      const messageText = document.createElement("div");
+      messageText.className = isTyping ? "typing" : "formatted-response";
 
-  if (!isTyping && !isUser) {
-    messageText.innerHTML = formatText(text);
-  } else {
-    messageText.textContent = text;
-  }
+      if (!isTyping && !isUser) messageText.innerHTML = formatText(text);
+      else messageText.textContent = text;
 
-      // Create action buttons (Copy, Like, Unsend)
       const actions = document.createElement("div");
       actions.className = "text-xs mt-1 text-gray-400 flex gap-2";
-
+      
       let actionButtons = `
-        <button onclick="copyToClipboard(this)" class="hover:text-purple-400 transition-colors">
-          Copy
-        </button>
-        <button onclick="toggleLike(this)" class="hover:text-pink-400 transition-colors">
-          Like
-        </button>
+        <button onclick="copyToClipboard(this)" class="hover:text-purple-400 transition-colors">Copy</button>
+        <button onclick="toggleLike(this)" class="hover:text-pink-400 transition-colors">Like</button>
       `;
-      if (isUser && index !== null) {
-        actionButtons += `
-          <button onclick="deleteMessage(${index})" class="hover:text-red-400 transition-colors">
-            Unsend
-          </button>
-        `;
-      }
+      if (isUser && index !== null) actionButtons += `
+        <button onclick="deleteMessage(${index})" class="hover:text-red-400 transition-colors">Unsend</button>
+      `;
+      
       actions.innerHTML = actionButtons;
-
       msg.appendChild(messageText);
       if (!isTyping) msg.appendChild(actions);
       wrapper.appendChild(msg);
@@ -207,22 +177,16 @@
       const messageElement = button.closest(".message-item").querySelector(".formatted-response, .typing");
       if (!messageElement) return;
 
-      const textToCopy = messageElement.textContent;
-      navigator.clipboard.writeText(textToCopy).then(() => {
+      navigator.clipboard.writeText(messageElement.textContent).then(() => {
         const notification = document.createElement('div');
         notification.textContent = '✓ Copied!';
         notification.className = 'fixed bottom-20 right-4 bg-green-500/90 text-white px-4 py-2 rounded-lg text-sm copy-notification';
         document.body.appendChild(notification);
         setTimeout(() => notification.remove(), 2000);
-      }).catch(err => {
-        console.error('Failed to copy: ', err);
-        alert('Failed to copy text. Please try again.');
       });
     }
 
-    function toggleLike(button) {
-      button.classList.toggle('liked');
-    }
+    function toggleLike(button) { button.classList.toggle('liked'); }
 
     function deleteMessage(index) {
       chatHistory.splice(index, 1);
@@ -231,7 +195,7 @@
     }
 
     function startNewChat() {
-      if (confirm('Are you sure you want to start a new chat? This will clear the current conversation.')) {
+      if (confirm('Are you sure you want to start a new chat?')) {
         localStorage.removeItem('chatHistory');
         location.reload();
       }
@@ -257,39 +221,27 @@
         });
 
         const data = await res.json();
-        const reply = data.reply;
-
         typingElement.parentElement.parentElement.remove();
+        
         const aiMsg = appendMessage("", false);
-
         let currentText = "";
-        for (let char of reply) {
+        for (let char of data.reply) {
           currentText += char;
           aiMsg.innerHTML = formatText(currentText);
           chatContainer.scrollTop = chatContainer.scrollHeight;
-          await new Promise((r) => setTimeout(r, 10));
+          await new Promise(r => setTimeout(r, 10));
         }
-
-        chatHistory.push({ role: "ai", content: reply });
+        
+        chatHistory.push({ role: "ai", content: data.reply });
         localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-
       } catch (err) {
         typingElement.parentElement.parentElement.remove();
         appendMessage("Error: Unable to connect.", false);
       }
     }
 
-    input.addEventListener('focus', () => {
-      setTimeout(() => {
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-      }, 300);
-    });
-
-    window.onload = () => {
-      chatHistory.forEach((msg, index) => {
-        appendMessage(msg.content, msg.role === "user", false, index);
-      });
-    };
+    input.addEventListener('focus', () => setTimeout(() => chatContainer.scrollTop = chatContainer.scrollHeight, 300));
+    window.onload = () => chatHistory.forEach((msg, index) => appendMessage(msg.content, msg.role === "user", false, index));
   </script>
 </body>
 </html>
