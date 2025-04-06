@@ -86,7 +86,7 @@
       left: 50%;
       transform: translate(-50%, -50%);
       pointer-events: none;  /* Prevent interfering with clicks */
-      opacity: 0.07;
+      opacity: 0.04;
       z-index: 0;
       text-align: center;
     }
@@ -106,7 +106,7 @@
   <!-- Fixed Watermark (stays in one place in the background) -->
   <div class="watermark">
     <h1>JARVIS</h1>
-    <span>developed by ajmat</span>
+    <span>developed by Ajmat</span>
   </div>
 
   <div class="fixed top-0 left-0 right-0 bg-gray-900 p-2 z-20 flex justify-between items-center">
@@ -161,12 +161,14 @@
       const msg = document.createElement("div");
       // Remove full width highlight by making bubble inline-block with a max-width.
       msg.style.display = "inline-block";
-      msg.style.maxWidth = "70%";
-      msg.className = `relative p-3 rounded-2xl whitespace-pre-wrap break-words select-text text-sm md:text-base shadow-lg ${
-        isUser
-          ? 'bg-white/10 text-white rounded-br-none'
-          : 'bg-white/5 text-white rounded-bl-none'
-      }`;
+msg.style.maxWidth = "70%";
+msg.style.wordBreak = "break-word";
+msg.style.whiteSpace = "pre-wrap";
+msg.className = `relative p-3 rounded-2xl select-text text-sm md:text-base shadow-lg ${
+  isUser
+    ? 'bg-white/10 text-white rounded-br-none self-end'
+    : 'bg-white/5 text-white rounded-bl-none self-start'
+}`;
 
       const messageText = document.createElement("div");
       messageText.className = isTyping ? "typing" : "formatted-response";
