@@ -386,6 +386,7 @@
       });
       const data = await res.json();
       if (data.message) {
+        // After registration, automatically log in and show chat page.
         document.getElementById('loginPage').classList.add('hidden');
         document.getElementById('chatPage').classList.remove('hidden');
         fetchConversations();
@@ -396,7 +397,7 @@
 
     function googleLogin() {
       const client = google.accounts.oauth2.initTokenClient({
-        client_id: '838951504854-9qu4pdjgchigencrbc9spq68hs5s1hsj.apps.googleusercontent.com', // Replace with your Google Client ID
+        client_id: '838951504854-9qu4pdjgchigencrbc9spq68hs5s1hsj.apps.googleusercontent.com',
         scope: 'email',
         callback: async (response) => {
           const res = await fetch('/google_login', {
@@ -419,12 +420,18 @@
     }
 
     window.onload = async () => {
-      const res = await fetch('/get_conversations', { credentials: 'include' });
-      const data = await res.json();
-      if (!data.error) {
-        document.getElementById('loginPage').classList.add('hidden');
-        document.getElementById('chatPage').classList.remove('hidden');
-        fetchConversations();
+      try {
+        const res = await fetch('/get_conversations', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.error) {
+          document.getElementById('loginPage').classList.add('hidden');
+          document.getElementById('chatPage').classList.remove('hidden');
+          fetchConversations();
+        }
+      } catch (e) {
+        // Default to login page if error occurs.
+        document.getElementById('loginPage').classList.remove('hidden');
+        document.getElementById('chatPage').classList.add('hidden');
       }
     };
   </script>
