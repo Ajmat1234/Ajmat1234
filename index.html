@@ -35,16 +35,18 @@
       transition: all 0.3s ease;
     }
     .formatted-response h2 {
-      font-size: 1.25rem !important;
+      font-size: 1.5rem !important;
       font-weight: 700 !important;
       color: #a855f7 !important;
-      margin: 1rem 0 0.5rem !important;
+      margin: 1.5rem 0 0.75rem !important;
+      border-bottom: 2px solid #a855f7;
+      padding-bottom: 0.25rem;
     }
     .formatted-response h3 {
-      font-size: 1.125rem !important;
+      font-size: 1.25rem !important;
       font-weight: 600 !important;
       color: #60a5fa !important;
-      margin: 0.75rem 0 0.25rem !important;
+      margin: 1rem 0 0.5rem !important;
     }
     .formatted-response strong {
       font-weight: 500 !important;
@@ -54,10 +56,21 @@
       font-style: italic !important;
       color: #34d399 !important;
     }
+    @keyframes slideInMsg {
+      from { transform: translateX(20px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .message-item {
+      animation: slideInMsg 0.3s ease-out;
+    }
   </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col">
-  <div class="flex-1 p-4 overflow-y-auto" id="chatContainer"></div>
+  <div class="fixed top-0 left-0 right-0 bg-gray-900 p-2 z-20 flex justify-between items-center">
+    <h1 class="text-lg font-bold">JARVIS Chat</h1>
+    <button onclick="startNewChat()" class="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-white text-sm">New Chat</button>
+  </div>
+  <div class="flex-1 p-4 overflow-y-auto mt-12" id="chatContainer"></div>
 
   <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
     <div class="flex items-center">
@@ -73,6 +86,7 @@
 
   <script>
     const chatContainer = document.getElementById("chatContainer");
+    const input = document.getElementById("userInput");
     let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
 
     function formatText(text) {
@@ -111,7 +125,7 @@
       actions.className = "text-xs mt-1 text-gray-400 flex gap-2";
 
       let actionButtons = `
-        <button onclick="copyToClipboard(this)" data-text="${text.replace(/"/g, '"')}" 
+        <button onclick="copyToClipboard(this)" data-text="${text.replace(/"/g, '&quot;')}" 
           class="hover:text-purple-400 transition-colors">Copy</button>
         <button onclick="toggleLike(this)" 
           class="hover:text-pink-400 transition-colors">Like</button>
@@ -138,6 +152,9 @@
         notification.className = 'fixed bottom-20 right-4 bg-green-500/90 text-white px-4 py-2 rounded-lg text-sm copy-notification';
         document.body.appendChild(notification);
         setTimeout(() => notification.remove(), 2000);
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+        alert('Failed to copy text. Please try again.');
       });
     }
 
@@ -151,8 +168,14 @@
       location.reload();
     }
 
+    function startNewChat() {
+      if (confirm('Are you sure you want to start a new chat? This will clear the current conversation.')) {
+        localStorage.removeItem('chatHistory');
+        location.reload();
+      }
+    }
+
     async function sendMessage() {
-      const input = document.getElementById("userInput");
       const userMsg = input.value.trim();
       if (!userMsg) return;
 
@@ -193,6 +216,12 @@
         appendMessage("Error: Unable to connect.", false);
       }
     }
+
+    input.addEventListener('focus', () => {
+      setTimeout(() => {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }, 300);
+    });
 
     window.onload = () => {
       chatHistory.forEach((msg, index) => {
