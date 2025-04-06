@@ -396,7 +396,7 @@
 
     function googleLogin() {
       const client = google.accounts.oauth2.initTokenClient({
-        client_id: 'YOUR_GOOGLE_CLIENT_ID', // Replace with your Google Client ID
+        client_id: '838951504854-9qu4pdjgchigencrbc9spq68hs5s1hsj.apps.googleusercontent.com', // Replace with your Google Client ID
         scope: 'email',
         callback: async (response) => {
           const res = await fetch('/google_login', {
