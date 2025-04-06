@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JARVIS Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     .typing::after {
       content: "";
@@ -55,96 +54,25 @@
       font-style: italic !important;
       color: #34d399 !important;
     }
-    #header {
-      position: sticky;
-      top: 0;
-      left: 0;
-      width: 100%;
-      background: #1f2937;
-      z-index: 1000;
-      padding: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    #menuIcon {
-      font-size: 1.5rem;
-      cursor: pointer;
-    }
-    #newChatButton {
-      padding: 5px 10px;
-      background: #4ade80;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #newChatButton:hover {
-      background: #22c55e;
-    }
-    #conversationSidebar {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 250px;
-      height: 100%;
-      background: #1f2937;
-      padding: 20px;
-      z-index: 1000;
-      color: white;
-      overflow-y: auto;
-    }
-    #conversationSidebar div {
-      padding: 10px;
-      cursor: pointer;
-      border-bottom: 1px solid #374151;
-    }
-    #conversationSidebar div:hover {
-      background: #4b5563;
-    }
   </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col">
-  <!-- Login Page -->
-  <div id="loginPage" class="flex justify-center items-center h-screen">
-    <div class="bg-gray-800 p-8 rounded-lg w-96">
-      <h2 class="text-2xl mb-4">Login with Google</h2>
-      <button onclick="googleLogin()" class="bg-red-500 p-2 w-full rounded">Login with Google</button>
-    </div>
-  </div>
-
-  <!-- Chat Page -->
-  <div id="chatPage" class="hidden flex-1 flex flex-col">
-    <div id="header">
-      <div id="menuIcon" onclick="toggleSidebar()">☰</div>
-      <button id="newChatButton" onclick="startNewChat()">New Chat</button>
-    </div>
-    <div class="flex-1 p-4 overflow-y-auto" id="chatContainer"></div>
-    <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
-      <div class="flex items-center">
-        <input id="userInput" type="text" placeholder="Ask anything..."
-          class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
-          onkeypress="if(event.key === 'Enter') sendMessage()" />
-        <button id="sendButton" onclick="sendMessage()"
-          class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
-          Send
-        </button>
-      </div>
-    </div>
-    <div id="conversationSidebar">
-      <div style="text-align: right; padding: 10px;">
-        <button onclick="toggleSidebar()" style="background: #ff4444; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; color: white;">Close</button>
-      </div>
+  <div class="flex-1 p-4 overflow-y-auto" id="chatContainer"></div>
+  <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
+    <div class="flex items-center">
+      <input id="userInput" type="text" placeholder="Ask anything..."
+        class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
+        onkeypress="if(event.key === 'Enter') sendMessage()" />
+      <button id="sendButton" onclick="sendMessage()"
+        class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
+        Send
+      </button>
     </div>
   </div>
 
   <script>
     const chatContainer = document.getElementById("chatContainer");
     let chatHistory = [];
-    let currentConversationId = null;
-    let isGenerating = false;
-    let abortController = null;
 
     function formatText(text) {
       let lines = text.split('\n');
@@ -161,7 +89,7 @@
       }).join('<br>');
     }
 
-    function appendMessage(text, isUser = false, isTyping = false, index = null) {
+    function appendMessage(text, isUser = false, isTyping = false) {
       const wrapper = document.createElement("div");
       wrapper.className = `my-2 flex ${isUser ? 'justify-end' : 'justify-start'} message-item`;
 
@@ -186,9 +114,6 @@
         <button onclick="toggleLike(this)" 
           class="hover:text-pink-400 transition-colors">Like</button>
       `;
-      if (isUser && index !== null) {
-        actionButtons += `<button onclick="deleteMessage(${index})" class="hover:text-red-400 transition-colors">Unsend</button>`;
-      }
       actions.innerHTML = actionButtons;
 
       msg.appendChild(messageText);
@@ -215,115 +140,22 @@
       button.classList.toggle('liked');
     }
 
-    function deleteMessage(index) {
-      chatHistory.splice(index, 1);
-      loadChatHistory();
-    }
-
-    function toggleSidebar() {
-      const sidebar = document.getElementById('conversationSidebar');
-      sidebar.style.display = sidebar.style.display === 'block' ? 'none' : 'block';
-      if (sidebar.style.display === 'block') {
-        fetchConversations();
-      }
-    }
-
-    async function fetchConversations() {
-      try {
-        const res = await fetch('/get_conversations', {
-          method: 'GET',
-          credentials: 'include'
-        });
-        const data = await res.json();
-        if (data.error) {
-          document.getElementById('chatPage').classList.add('hidden');
-          document.getElementById('loginPage').classList.remove('hidden');
-          return;
-        }
-        const sidebar = document.getElementById('conversationSidebar');
-        sidebar.innerHTML = '<div style="text-align: right; padding: 10px;"><button onclick="toggleSidebar()" style="background: #ff4444; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; color: white;">Close</button></div>';
-        data.conversations.forEach(conv => {
-          if (conv.messages.length > 0) {
-            const item = document.createElement('div');
-            item.textContent = conv.messages[0].replace('User: ', '').slice(0, 20) + '...' || `Conv ${conv.id.slice(0, 8)}`;
-            item.setAttribute('data-id', conv.id);
-            item.onclick = () => loadConversation(conv.id);
-            sidebar.appendChild(item);
-          }
-        });
-      } catch (err) {
-        const sidebar = document.getElementById('conversationSidebar');
-        sidebar.innerHTML = '<div style="text-align: right; padding: 10px;"><button onclick="toggleSidebar()" style="background: #ff4444; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; color: white;">Close</button></div><div>चैट लोड करने में त्रुटि हुई।</div>';
-      }
-    }
-
-    async function loadConversation(conversationId) {
-      const res = await fetch('/chat', {
-        method: 'POST',
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: '', conversation_id: conversationId }),
-        credentials: 'include'
-      });
-      const data = await res.json();
-      chatHistory = data.reply.split('\n').map(msg => {
-        if (msg.startsWith('User: ')) return { role: 'user', content: msg.replace('User: ', '') };
-        if (msg.startsWith('JARVIS: ')) return { role: 'ai', content: msg.replace('JARVIS: ', '') };
-        return null;
-      }).filter(Boolean);
-      currentConversationId = conversationId;
-      loadChatHistory();
-      document.getElementById('conversationSidebar').style.display = 'none';
-    }
-
-    function loadChatHistory() {
-      chatContainer.innerHTML = '';
-      chatHistory.forEach((msg, index) => {
-        appendMessage(msg.content, msg.role === "user", false, index);
-      });
-    }
-
-    async function startNewChat() {
-      chatHistory = [];
-      currentConversationId = null;
-      chatContainer.innerHTML = '';
-      await fetchConversations();
-    }
-
     async function sendMessage() {
       const input = document.getElementById("userInput");
       const userMsg = input.value.trim();
       if (!userMsg) return;
 
-      const sendButton = document.getElementById('sendButton');
-
-      if (isGenerating && abortController) {
-        abortController.abort();
-        isGenerating = false;
-        sendButton.textContent = 'Send';
-        const typingElement = document.querySelector('.typing');
-        if (typingElement) typingElement.parentElement.parentElement.remove();
-        appendMessage("Response roka gaya.", false);
-        return;
-      }
-
-      const userIndex = chatHistory.length;
-      appendMessage(userMsg, true, false, userIndex);
+      appendMessage(userMsg, true);
       chatHistory.push({ role: "user", content: userMsg });
       input.value = "";
 
       const typingElement = appendMessage("Thinking", false, true);
 
       try {
-        isGenerating = true;
-        abortController = new AbortController();
-        sendButton.textContent = 'Stop';
-
         const res = await fetch("/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: userMsg, conversation_id: currentConversationId }),
-          signal: abortController.signal,
-          credentials: 'include'
+          body: JSON.stringify({ message: userMsg }),
         });
 
         const data = await res.json();
@@ -331,70 +163,16 @@
           throw new Error(data.error);
         }
         const reply = data.reply;
-        currentConversationId = data.conversation_id;
 
         typingElement.parentElement.parentElement.remove();
         appendMessage(reply, false);
         chatHistory.push({ role: "ai", content: reply });
-        await fetchConversations();
 
       } catch (err) {
-        if (err.name !== 'AbortError') {
-          typingElement.parentElement.parentElement.remove();
-          appendMessage(`Error: ${err.message}`, false);
-        }
-      } finally {
-        isGenerating = false;
-        abortController = null;
-        sendButton.textContent = 'Send';
+        typingElement.parentElement.parentElement.remove();
+        appendMessage(`Error: ${err.message}`, false);
       }
     }
-
-    function googleLogin() {
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: '838951504854-9qu4pdjgchigencrbc9spq68hs5s1hsj.apps.googleusercontent.com',
-        scope: 'email',
-        callback: async (response) => {
-          if (response.error) {
-            alert("Google login failed: " + response.error);
-            return;
-          }
-          const res = await fetch('/google_login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: response.access_token }),
-            credentials: 'include'
-          });
-          const data = await res.json();
-          if (data.message) {
-            document.getElementById('loginPage').classList.add('hidden');
-            document.getElementById('chatPage').classList.remove('hidden');
-            fetchConversations();
-          } else {
-            alert(data.error);
-          }
-        },
-      });
-      client.requestAccessToken();
-    }
-
-    window.onload = async () => {
-      try {
-        const res = await fetch('/check_auth', { credentials: 'include' });
-        const data = await res.json();
-        if (data.authenticated) {
-          document.getElementById('loginPage').classList.add('hidden');
-          document.getElementById('chatPage').classList.remove('hidden');
-          fetchConversations();
-        } else {
-          document.getElementById('loginPage').classList.remove('hidden');
-          document.getElementById('chatPage').classList.add('hidden');
-        }
-      } catch (e) {
-        document.getElementById('loginPage').classList.remove('hidden');
-        document.getElementById('chatPage').classList.add('hidden');
-      }
-    };
   </script>
 </body>
 </html>
