@@ -109,11 +109,7 @@
   <!-- Login Page -->
   <div id="loginPage" class="flex justify-center items-center h-screen">
     <div class="bg-gray-800 p-8 rounded-lg w-96">
-      <h2 class="text-2xl mb-4">Login / Register</h2>
-      <input type="email" id="email" placeholder="Email" class="mb-2 p-2 w-full bg-gray-700 text-white rounded" />
-      <input type="password" id="password" placeholder="Password" class="mb-2 p-2 w-full bg-gray-700 text-white rounded" />
-      <button onclick="login()" class="bg-blue-500 p-2 w-full mb-2 rounded">Login</button>
-      <button onclick="register()" class="bg-green-500 p-2 w-full mb-2 rounded">Register</button>
+      <h2 class="text-2xl mb-4">Login with Google</h2>
       <button onclick="googleLogin()" class="bg-red-500 p-2 w-full rounded">Login with Google</button>
     </div>
   </div>
@@ -354,45 +350,6 @@
       }
     }
 
-    async function login() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      const res = await fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-        credentials: 'include'
-      });
-      const data = await res.json();
-      if (data.message) {
-        document.getElementById('loginPage').classList.add('hidden');
-        document.getElementById('chatPage').classList.remove('hidden');
-        fetchConversations();
-      } else {
-        alert(data.error);
-      }
-    }
-
-    async function register() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      const res = await fetch('/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-        credentials: 'include'
-      });
-      const data = await res.json();
-      if (data.message) {
-        // Automatically log in after registration.
-        document.getElementById('loginPage').classList.add('hidden');
-        document.getElementById('chatPage').classList.remove('hidden');
-        fetchConversations();
-      } else {
-        alert(data.error);
-      }
-    }
-
     function googleLogin() {
       const client = google.accounts.oauth2.initTokenClient({
         client_id: '838951504854-9qu4pdjgchigencrbc9spq68hs5s1hsj.apps.googleusercontent.com',
@@ -423,12 +380,15 @@
 
     window.onload = async () => {
       try {
-        const res = await fetch('/get_conversations', { credentials: 'include' });
+        const res = await fetch('/check_auth', { credentials: 'include' });
         const data = await res.json();
-        if (!data.error) {
+        if (data.authenticated) {
           document.getElementById('loginPage').classList.add('hidden');
           document.getElementById('chatPage').classList.remove('hidden');
           fetchConversations();
+        } else {
+          document.getElementById('loginPage').classList.remove('hidden');
+          document.getElementById('chatPage').classList.add('hidden');
         }
       } catch (e) {
         document.getElementById('loginPage').classList.remove('hidden');
