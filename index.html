@@ -58,12 +58,13 @@
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col">
   <div class="flex-1 p-4 overflow-y-auto" id="chatContainer"></div>
+
   <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
     <div class="flex items-center">
       <input id="userInput" type="text" placeholder="Ask anything..."
         class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
         onkeypress="if(event.key === 'Enter') sendMessage()" />
-      <button id="sendButton" onclick="sendMessage()"
+      <button onclick="sendMessage()"
         class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
         Send
       </button>
@@ -72,7 +73,7 @@
 
   <script>
     const chatContainer = document.getElementById("chatContainer");
-    let chatHistory = [];
+    let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
 
     function formatText(text) {
       let lines = text.split('\n');
@@ -89,7 +90,7 @@
       }).join('<br>');
     }
 
-    function appendMessage(text, isUser = false, isTyping = false) {
+    function appendMessage(text, isUser = false, isTyping = false, index = null) {
       const wrapper = document.createElement("div");
       wrapper.className = `my-2 flex ${isUser ? 'justify-end' : 'justify-start'} message-item`;
 
@@ -108,12 +109,16 @@
 
       const actions = document.createElement("div");
       actions.className = "text-xs mt-1 text-gray-400 flex gap-2";
+
       let actionButtons = `
         <button onclick="copyToClipboard(this)" data-text="${text.replace(/"/g, '"')}" 
           class="hover:text-purple-400 transition-colors">Copy</button>
         <button onclick="toggleLike(this)" 
           class="hover:text-pink-400 transition-colors">Like</button>
       `;
+      if (isUser && index !== null) {
+        actionButtons += `<button onclick="deleteMessage(${index})" class="hover:text-red-400 transition-colors">Unsend</button>`;
+      }
       actions.innerHTML = actionButtons;
 
       msg.appendChild(messageText);
@@ -140,39 +145,60 @@
       button.classList.toggle('liked');
     }
 
+    function deleteMessage(index) {
+      chatHistory.splice(index, 1);
+      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+      location.reload();
+    }
+
     async function sendMessage() {
       const input = document.getElementById("userInput");
       const userMsg = input.value.trim();
       if (!userMsg) return;
 
-      appendMessage(userMsg, true);
+      const userIndex = chatHistory.length;
+      appendMessage(userMsg, true, false, userIndex);
       chatHistory.push({ role: "user", content: userMsg });
+      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
       input.value = "";
 
       const typingElement = appendMessage("Thinking", false, true);
 
       try {
-        const res = await fetch("/chat", {
+        const res = await fetch("https://practice-tvk1.onrender.com/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: userMsg }),
         });
 
         const data = await res.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
         const reply = data.reply;
 
         typingElement.parentElement.parentElement.remove();
-        appendMessage(reply, false);
+        const aiMsg = appendMessage("", false);
+
+        let currentText = "";
+        for (let char of reply) {
+          currentText += char;
+          aiMsg.innerHTML = formatText(currentText);
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+          await new Promise((r) => setTimeout(r, 10));
+        }
+
         chatHistory.push({ role: "ai", content: reply });
+        localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
 
       } catch (err) {
         typingElement.parentElement.parentElement.remove();
-        appendMessage(`Error: ${err.message}`, false);
+        appendMessage("Error: Unable to connect.", false);
       }
     }
+
+    window.onload = () => {
+      chatHistory.forEach((msg, index) => {
+        appendMessage(msg.content, msg.role === "user", false, index);
+      });
+    };
   </script>
 </body>
 </html>
