@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>JARVIS Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -11,10 +11,12 @@
       animation: dots 1s steps(3, end) infinite;
     }
     @keyframes dots {
-      0% { content: "."; }
-      33% { content: ".."; }
-      66% { content: "..."; }
+      0%   { content: "."; }
+      33%  { content: ".."; }
+      66%  { content: "..."; }
     }
+
+    /* स्क्रॉलबार स्टाइल */
     ::-webkit-scrollbar {
       width: 6px;
     }
@@ -22,18 +24,24 @@
       background: #555;
       border-radius: 10px;
     }
+
+    /* Copy notification */
     .copy-notification {
       animation: slideIn 0.3s ease-out;
     }
     @keyframes slideIn {
       from { transform: translateX(100%); }
-      to { transform: translateX(0); }
+      to   { transform: translateX(0); }
     }
+
+    /* Like बटन इफ़ेक्ट */
     .liked {
       color: #ec4899 !important;
       transform: scale(1.2);
       transition: all 0.3s ease;
     }
+
+    /* फॉर्मेटेड टेक्स्ट के लिए */
     .formatted-response h2 {
       font-size: 1.5rem !important;
       font-weight: 700 !important;
@@ -41,6 +49,7 @@
       margin: 1.5rem 0 0.75rem !important;
       border-bottom: 2px solid #a855f7;
       padding-bottom: 0.25rem;
+      display: inline-block; /* underline केवल टेक्स्ट की चौड़ाई तक रहे */
     }
     .formatted-response h3 {
       font-size: 1.25rem !important;
@@ -56,29 +65,64 @@
       font-style: italic !important;
       color: #34d399 !important;
     }
+
     @keyframes slideInMsg {
       from { transform: translateX(20px); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+      to   { transform: translateX(0); opacity: 1; }
     }
     .message-item {
       animation: slideInMsg 0.3s ease-out;
     }
+
+    /* बैकग्राउंड वॉटरमार्क के लिए */
+    .watermark {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;  /* क्लिक को ब्लॉक न करे */
+      opacity: 0.07;        /* बहुत हल्का सा दिखे */
+      z-index: 0;
+    }
+    .watermark h1 {
+      font-size: 6rem;
+      font-weight: bold;
+    }
+    .watermark span {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+    }
   </style>
 </head>
-<body class="bg-black text-white min-h-screen flex flex-col">
+<body class="bg-black text-white min-h-screen flex flex-col relative">
+
+  <!-- Watermark -->
+  <div class="watermark">
+    <h1>JARVIS</h1>
+    <span>developed by ajmat</span>
+  </div>
+
   <div class="fixed top-0 left-0 right-0 bg-gray-900 p-2 z-20 flex justify-between items-center">
     <h1 class="text-lg font-bold">JARVIS Chat</h1>
-    <button onclick="startNewChat()" class="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-white text-sm">New Chat</button>
+    <!-- New Chat बटन का रंग Dark Red -->
+    <button onclick="startNewChat()" class="bg-red-700 hover:bg-red-800 px-3 py-1 rounded text-white text-sm">
+      New Chat
+    </button>
   </div>
+
   <div class="flex-1 p-4 overflow-y-auto mt-12" id="chatContainer"></div>
 
   <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
     <div class="flex items-center">
-      <input id="userInput" type="text" placeholder="Ask anything..."
-        class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
-        onkeypress="if(event.key === 'Enter') sendMessage()" />
+      <input id="userInput"
+             type="text"
+             placeholder="Ask anything..."
+             class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
+             onkeypress="if(event.key === 'Enter') sendMessage()" />
       <button onclick="sendMessage()"
-        class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
+              class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
         Send
       </button>
     </div>
@@ -110,33 +154,48 @@
 
       const msg = document.createElement("div");
       msg.className = `relative p-3 rounded-2xl max-w-[70%] whitespace-pre-wrap break-words select-text text-sm md:text-base shadow-lg ${
-        isUser ? 'bg-white/10 text-white rounded-br-none' : 'bg-white/5 text-white rounded-bl-none'
+        isUser
+          ? 'bg-white/10 text-white rounded-br-none'
+          : 'bg-white/5 text-white rounded-bl-none'
       }`;
 
       const messageText = document.createElement("div");
       messageText.className = isTyping ? "typing" : "formatted-response";
+
+      // अगर टाइपिंग नहीं हो रही और यूज़र मैसेज भी नहीं है, तो HTML फॉर्मेट करके दिखाएँ
       if (!isTyping && !isUser) {
         messageText.innerHTML = formatText(text);
       } else {
         messageText.textContent = text;
       }
 
+      // एक्शन बटन (Copy, Like, Unsend) के लिए
       const actions = document.createElement("div");
       actions.className = "text-xs mt-1 text-gray-400 flex gap-2";
 
+      // Copy, Like, (Unsend if user message)
       let actionButtons = `
-        <button onclick="copyToClipboard(this)" data-text="${text.replace(/"/g, '&quot;')}" 
-          class="hover:text-purple-400 transition-colors">Copy</button>
-        <button onclick="toggleLike(this)" 
-          class="hover:text-pink-400 transition-colors">Like</button>
+        <button onclick="copyToClipboard(this)" class="hover:text-purple-400 transition-colors">
+          Copy
+        </button>
+        <button onclick="toggleLike(this)" class="hover:text-pink-400 transition-colors">
+          Like
+        </button>
       `;
+      // सिर्फ user ke messages में Unsend दिखे
       if (isUser && index !== null) {
-        actionButtons += `<button onclick="deleteMessage(${index})" class="hover:text-red-400 transition-colors">Unsend</button>`;
+        actionButtons += `
+          <button onclick="deleteMessage(${index})" class="hover:text-red-400 transition-colors">
+            Unsend
+          </button>
+        `;
       }
       actions.innerHTML = actionButtons;
 
       msg.appendChild(messageText);
+      // टाइपिंग खत्म होने के बाद ही action buttons दिखाएँ
       if (!isTyping) msg.appendChild(actions);
+
       wrapper.appendChild(msg);
       chatContainer.appendChild(wrapper);
       chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -144,9 +203,14 @@
       return messageText;
     }
 
+    // Copy बटन क्लिक
     function copyToClipboard(button) {
-      const text = button.getAttribute('data-text');
-      navigator.clipboard.writeText(text).then(() => {
+      // जिस मैसेज से Copy बटन क्लिक हुआ, उसके टेक्स्ट को ले आओ
+      const messageElement = button.closest(".message-item").querySelector(".formatted-response, .typing");
+      if (!messageElement) return;
+
+      const textToCopy = messageElement.textContent; // केवल plain text कॉपी करें
+      navigator.clipboard.writeText(textToCopy).then(() => {
         const notification = document.createElement('div');
         notification.textContent = '✓ Copied!';
         notification.className = 'fixed bottom-20 right-4 bg-green-500/90 text-white px-4 py-2 rounded-lg text-sm copy-notification';
@@ -158,16 +222,19 @@
       });
     }
 
+    // Like बटन क्लिक
     function toggleLike(button) {
       button.classList.toggle('liked');
     }
 
+    // Unsend बटन क्लिक
     function deleteMessage(index) {
       chatHistory.splice(index, 1);
       localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
       location.reload();
     }
 
+    // नया चैट शुरू करने पर सारी हिस्ट्री हटाएँ
     function startNewChat() {
       if (confirm('Are you sure you want to start a new chat? This will clear the current conversation.')) {
         localStorage.removeItem('chatHistory');
@@ -175,19 +242,25 @@
       }
     }
 
+    // मैसेज सेंड करने का फ़ंक्शन
     async function sendMessage() {
       const userMsg = input.value.trim();
       if (!userMsg) return;
 
+      // पहले यूज़र का मैसेज दिखाएँ
       const userIndex = chatHistory.length;
       appendMessage(userMsg, true, false, userIndex);
+
+      // चैट हिस्ट्री में जोड़ें
       chatHistory.push({ role: "user", content: userMsg });
       localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
       input.value = "";
 
+      // टाइपिंग मैसेज दिखाएँ
       const typingElement = appendMessage("Thinking", false, true);
 
       try {
+        // अपनी API को कॉल करें
         const res = await fetch("https://practice-tvk1.onrender.com/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -197,7 +270,10 @@
         const data = await res.json();
         const reply = data.reply;
 
+        // टाइपिंग मैसेज हटाएँ
         typingElement.parentElement.parentElement.remove();
+
+        // AI का मैसेज append करें
         const aiMsg = appendMessage("", false);
 
         let currentText = "";
@@ -208,21 +284,25 @@
           await new Promise((r) => setTimeout(r, 10));
         }
 
+        // चैट हिस्ट्री में AI का मैसेज भी स्टोर करें
         chatHistory.push({ role: "ai", content: reply });
         localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
 
       } catch (err) {
+        // टाइपिंग मैसेज हटाएँ
         typingElement.parentElement.parentElement.remove();
         appendMessage("Error: Unable to connect.", false);
       }
     }
 
+    // जब यूज़र इनपुट पर फोकस करे तो ऑटो-स्क्रॉल
     input.addEventListener('focus', () => {
       setTimeout(() => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
       }, 300);
     });
 
+    // पेज लोड पर पुरानी चैट लोड करें
     window.onload = () => {
       chatHistory.forEach((msg, index) => {
         appendMessage(msg.content, msg.role === "user", false, index);
