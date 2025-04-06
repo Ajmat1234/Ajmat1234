@@ -6,110 +6,100 @@
   <title>JARVIS Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-  /* Typing animation */
-  .typing::after {
-    content: "";
-    animation: dots 1s steps(3, end) infinite;
-  }
-  @keyframes dots {
-    0%   { content: "."; }
-    33%  { content: ".."; }
-    66%  { content: "..."; }
-  }
+    /* Typing animation */
+    .typing::after {
+      content: "";
+      animation: dots 1s steps(3, end) infinite;
+    }
+    @keyframes dots {
+      0%   { content: "."; }
+      33%  { content: ".."; }
+      66%  { content: "..."; }
+    }
 
-  /* Scrollbar style */
-  ::-webkit-scrollbar {
-    width: 6px;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #555;
-    border-radius: 10px;
-  }
+    /* Scrollbar style */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #555;
+      border-radius: 10px;
+    }
 
-  /* Copy notification */
-  .copy-notification {
-    animation: slideIn 0.3s ease-out;
-  }
-  @keyframes slideIn {
-    from { transform: translateX(100%); }
-    to   { transform: translateX(0); }
-  }
+    /* Copy notification */
+    .copy-notification {
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); }
+      to   { transform: translateX(0); }
+    }
 
-  /* Like button effect */
-  .liked {
-    color: #ec4899 !important;
-    transform: scale(1.2);
-    transition: all 0.3s ease;
-  }
+    /* Like button effect */
+    .liked {
+      color: #ec4899 !important;
+      transform: scale(1.2);
+      transition: all 0.3s ease;
+    }
 
-  /* AI Response Text Formatting with vibrant colors */
-  .formatted-response h2 {
-    font-size: 1.75rem !important;
-    font-weight: 800 !important;
-    color: #a56ef5 !important; /* Purple from image */
-    margin: 1.5rem 0 0.75rem !important;
-    border-bottom: 2px solid #a56ef5;
-    padding-bottom: 0.25rem;
-    display: inline-block;
-  }
+    /* AI Response Text Formatting with more vibrant colors */
+.formatted-response h2 {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  color: #a56ef5 !important; /* Purple */
+  margin: 1.5rem 0 0.75rem !important;
+  border-bottom: 2px solid #a56ef5;
+  padding-bottom: 0.25rem;
+  display: inline-block;
+}
+.formatted-response h3 {
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  color: #34d399 !important; /* Bright green */
+  margin: 1rem 0 0.5rem !important;
+}
+.formatted-response strong {
+  font-weight: 500 !important;
+  color: #f472b6 !important; /* Pink */
+}
+.formatted-response em {
+  font-style: italic !important;
+  color: #60a5fa !important; /* Blue */
+}
+.formatted-response u {
+  text-decoration: underline !important;
+  color: #f87171 !important; /* Soft Red */
+}
 
-  .formatted-response h3 {
-    font-size: 1.35rem !important;
-    font-weight: 700 !important;
-    color: #4ade80 !important; /* Green */
-    margin: 1rem 0 0.5rem !important;
-  }
+    @keyframes slideInMsg {
+      from { transform: translateX(20px); opacity: 0; }
+      to   { transform: translateX(0); opacity: 1; }
+    }
+    .message-item {
+      animation: slideInMsg 0.3s ease-out;
+    }
 
-  .formatted-response strong {
-    font-weight: 600 !important;
-    color: #f472b6 !important; /* Pink */
-  }
-
-  .formatted-response em {
-    font-style: italic !important;
-    color: #60a5fa !important; /* Blue */
-  }
-
-  .formatted-response ul,
-  .formatted-response ol {
-    padding-left: 1.5rem;
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .formatted-response li {
-    margin-bottom: 0.25rem;
-  }
-
-  @keyframes slideInMsg {
-    from { transform: translateX(20px); opacity: 0; }
-    to   { transform: translateX(0); opacity: 1; }
-  }
-  .message-item {
-    animation: slideInMsg 0.3s ease-out;
-  }
-
-  /* Watermark fixed in the background */
-  .watermark {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    opacity: 0.07;
-    z-index: 0;
-    text-align: center;
-  }
-  .watermark h1 {
-    font-size: 6rem;
-    font-weight: bold;
-  }
-  .watermark span {
-    display: block;
-    font-size: 0.8rem;
-    margin-top: 0.5rem;
-  }
-</style>
+    /* Watermark fixed in the background */
+    .watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;  /* Prevent interfering with clicks */
+      opacity: 0.07;
+      z-index: 0;
+      text-align: center;
+    }
+    .watermark h1 {
+      font-size: 6rem;
+      font-weight: bold;
+    }
+    .watermark span {
+      display: block;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+    }
+  </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col relative">
 
