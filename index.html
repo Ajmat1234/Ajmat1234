@@ -223,6 +223,8 @@
 
     async function fetchConversations() {
       const userId = document.cookie.split('; ').find(row => row.startsWith('user_id='))?.split('=')[1];
+      if (!userId) return;
+
       try {
         const res = await fetch(`https://practice-tvk1.onrender.com/get_conversations`, {
           method: 'GET',
@@ -253,7 +255,12 @@
         body: JSON.stringify({ message: '', conversation_id: conversationId })
       });
       const data = await res.json();
-      chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+      chatHistory = data.reply.split('\n').map(msg => {
+        if (msg.startsWith('User: ')) return { role: 'user', content: msg.replace('User: ', '') };
+        if (msg.startsWith('JARVIS: ')) return { role: 'ai', content: msg.replace('JARVIS: ', '') };
+        return null;
+      }).filter(Boolean);
+      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
       localStorage.setItem('currentConversationId', conversationId);
       const chatContainer = document.getElementById('chatContainer');
       chatContainer.innerHTML = '';
@@ -265,12 +272,11 @@
 
     async function startNewChat() {
       if (chatHistory.length > 0 && currentConversationId) {
-        const res = await fetch(`https://practice-tvk1.onrender.com/chat`, {
+        await fetch(`https://practice-tvk1.onrender.com/chat`, {
           method: 'POST',
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: '', conversation_id: currentConversationId })
         });
-        await res.json();
       }
       chatHistory = [];
       currentConversationId = null;
@@ -278,10 +284,7 @@
       localStorage.removeItem('currentConversationId');
       const chatContainer = document.getElementById('chatContainer');
       chatContainer.innerHTML = '';
-      const sidebar = document.getElementById('conversationSidebar');
-      if (sidebar.style.display === 'block') {
-        await fetchConversations();
-      }
+      await fetchConversations(); // Update sidebar immediately
     }
 
     async function sendMessage() {
@@ -292,16 +295,14 @@
       const sendButton = document.getElementById('sendButton');
       let conversationId = localStorage.getItem('currentConversationId') || null;
 
-      if (isGenerating) {
-        if (abortController) {
-          abortController.abort();
-          isGenerating = false;
-          sendButton.textContent = 'Send';
-          const typingElement = document.querySelector('.typing');
-          if (typingElement) typingElement.parentElement.parentElement.remove();
-          appendMessage("Response roka gaya.", false);
-          return;
-        }
+      if (isGenerating && abortController) {
+        abortController.abort();
+        isGenerating = false;
+        sendButton.textContent = 'Send';
+        const typingElement = document.querySelector('.typing');
+        if (typingElement) typingElement.parentElement.parentElement.remove();
+        appendMessage("Response roka gaya.", false);
+        return;
       }
 
       const userIndex = chatHistory.length;
@@ -315,15 +316,13 @@
       try {
         isGenerating = true;
         abortController = new AbortController();
-        const signal = abortController.signal;
-
         sendButton.textContent = 'Stop';
 
         const res = await fetch("https://practice-tvk1.onrender.com/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: userMsg, conversation_id: conversationId }),
-          signal: signal
+          signal: abortController.signal
         });
 
         const data = await res.json();
@@ -332,19 +331,10 @@
         localStorage.setItem('currentConversationId', conversationId);
 
         typingElement.parentElement.parentElement.remove();
-        const aiMsg = appendMessage("", false);
-
-        let currentText = "";
-        for (let char of reply) {
-          if (!isGenerating) break;
-          currentText += char;
-          aiMsg.innerHTML = formatText(currentText);
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-          await new Promise((r) => setTimeout(r, 10));
-        }
-
+        appendMessage(reply, false);
         chatHistory.push({ role: "ai", content: reply });
         localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+        await fetchConversations(); // Update sidebar after new message
 
       } catch (err) {
         if (err.name === 'AbortError') {
