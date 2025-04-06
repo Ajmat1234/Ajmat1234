@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JARVIS Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     .typing::after {
       content: "";
@@ -105,35 +106,47 @@
   </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col">
-  <div id="header">
-    <div id="menuIcon" onclick="toggleSidebar()">☰</div>
-    <button id="newChatButton" onclick="startNewChat()">New Chat</button>
-  </div>
-  <div class="flex-1 p-4 overflow-y-auto" id="chatContainer"></div>
-
-  <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
-    <div class="flex items-center">
-      <input id="userInput" type="text" placeholder="Ask anything..."
-        class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
-        onkeypress="if(event.key === 'Enter') sendMessage()" />
-      <button id="sendButton" onclick="sendMessage()"
-        class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
-        Send
-      </button>
+  <!-- Login Page -->
+  <div id="loginPage" class="flex justify-center items-center h-screen">
+    <div class="bg-gray-800 p-8 rounded-lg w-96">
+      <h2 class="text-2xl mb-4">Login / Register</h2>
+      <input type="email" id="email" placeholder="Email" class="mb-2 p-2 w-full bg-gray-700 text-white rounded" />
+      <input type="password" id="password" placeholder="Password" class="mb-2 p-2 w-full bg-gray-700 text-white rounded" />
+      <button onclick="login()" class="bg-blue-500 p-2 w-full mb-2 rounded">Login</button>
+      <button onclick="register()" class="bg-green-500 p-2 w-full mb-2 rounded">Register</button>
+      <button onclick="googleLogin()" class="bg-red-500 p-2 w-full rounded">Login with Google</button>
     </div>
   </div>
 
-  <div id="conversationSidebar">
-    <div style="text-align: right; padding: 10px;">
-      <button onclick="toggleSidebar()" style="background: #ff4444; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; color: white;">Close</button>
+  <!-- Chat Page -->
+  <div id="chatPage" class="hidden flex-1 flex flex-col">
+    <div id="header">
+      <div id="menuIcon" onclick="toggleSidebar()">☰</div>
+      <button id="newChatButton" onclick="startNewChat()">New Chat</button>
     </div>
-    <!-- Conversations list yahan aayegi -->
+    <div class="flex-1 p-4 overflow-y-auto" id="chatContainer"></div>
+    <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
+      <div class="flex items-center">
+        <input id="userInput" type="text" placeholder="Ask anything..."
+          class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
+          onkeypress="if(event.key === 'Enter') sendMessage()" />
+        <button id="sendButton" onclick="sendMessage()"
+          class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
+          Send
+        </button>
+      </div>
+    </div>
+    <div id="conversationSidebar">
+      <div style="text-align: right; padding: 10px;">
+        <button onclick="toggleSidebar()" style="background: #ff4444; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; color: white;">Close</button>
+      </div>
+    </div>
   </div>
 
   <script>
     const chatContainer = document.getElementById("chatContainer");
-    let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
-    let currentConversationId = localStorage.getItem('currentConversationId') || null;
+    let chatHistory = [];
+    let currentConversationId = null;
     let isGenerating = false;
     let abortController = null;
 
@@ -171,7 +184,6 @@
 
       const actions = document.createElement("div");
       actions.className = "text-xs mt-1 text-gray-400 flex gap-2";
-
       let actionButtons = `
         <button onclick="copyToClipboard(this)" data-text="${text.replace(/"/g, '"')}" 
           class="hover:text-purple-400 transition-colors">Copy</button>
@@ -209,8 +221,7 @@
 
     function deleteMessage(index) {
       chatHistory.splice(index, 1);
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-      location.reload();
+      loadChatHistory();
     }
 
     function toggleSidebar() {
@@ -222,15 +233,17 @@
     }
 
     async function fetchConversations() {
-      const userId = document.cookie.split('; ').find(row => row.startsWith('user_id='))?.split('=')[1];
-      if (!userId) return;
-
       try {
-        const res = await fetch(`https://practice-tvk1.onrender.com/get_conversations`, {
+        const res = await fetch('/get_conversations', {
           method: 'GET',
-          headers: { "Content-Type": "application/json" }
+          credentials: 'include'
         });
         const data = await res.json();
+        if (data.error) {
+          document.getElementById('chatPage').classList.add('hidden');
+          document.getElementById('loginPage').classList.remove('hidden');
+          return;
+        }
         const sidebar = document.getElementById('conversationSidebar');
         sidebar.innerHTML = '<div style="text-align: right; padding: 10px;"><button onclick="toggleSidebar()" style="background: #ff4444; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; color: white;">Close</button></div>';
         data.conversations.forEach(conv => {
@@ -249,10 +262,11 @@
     }
 
     async function loadConversation(conversationId) {
-      const res = await fetch(`https://practice-tvk1.onrender.com/chat`, {
+      const res = await fetch('/chat', {
         method: 'POST',
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: '', conversation_id: conversationId })
+        body: JSON.stringify({ message: '', conversation_id: conversationId }),
+        credentials: 'include'
       });
       const data = await res.json();
       chatHistory = data.reply.split('\n').map(msg => {
@@ -260,31 +274,23 @@
         if (msg.startsWith('JARVIS: ')) return { role: 'ai', content: msg.replace('JARVIS: ', '') };
         return null;
       }).filter(Boolean);
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-      localStorage.setItem('currentConversationId', conversationId);
-      const chatContainer = document.getElementById('chatContainer');
+      currentConversationId = conversationId;
+      loadChatHistory();
+      document.getElementById('conversationSidebar').style.display = 'none';
+    }
+
+    function loadChatHistory() {
       chatContainer.innerHTML = '';
       chatHistory.forEach((msg, index) => {
         appendMessage(msg.content, msg.role === "user", false, index);
       });
-      document.getElementById('conversationSidebar').style.display = 'none';
     }
 
     async function startNewChat() {
-      if (chatHistory.length > 0 && currentConversationId) {
-        await fetch(`https://practice-tvk1.onrender.com/chat`, {
-          method: 'POST',
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: '', conversation_id: currentConversationId })
-        });
-      }
       chatHistory = [];
       currentConversationId = null;
-      localStorage.removeItem('chatHistory');
-      localStorage.removeItem('currentConversationId');
-      const chatContainer = document.getElementById('chatContainer');
       chatContainer.innerHTML = '';
-      await fetchConversations(); // Update sidebar immediately
+      await fetchConversations();
     }
 
     async function sendMessage() {
@@ -293,7 +299,6 @@
       if (!userMsg) return;
 
       const sendButton = document.getElementById('sendButton');
-      let conversationId = localStorage.getItem('currentConversationId') || null;
 
       if (isGenerating && abortController) {
         abortController.abort();
@@ -308,7 +313,6 @@
       const userIndex = chatHistory.length;
       appendMessage(userMsg, true, false, userIndex);
       chatHistory.push({ role: "user", content: userMsg });
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
       input.value = "";
 
       const typingElement = appendMessage("Thinking", false, true);
@@ -318,30 +322,32 @@
         abortController = new AbortController();
         sendButton.textContent = 'Stop';
 
-        const res = await fetch("https://practice-tvk1.onrender.com/chat", {
+        const res = await fetch("/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: userMsg, conversation_id: conversationId }),
-          signal: abortController.signal
+          body: JSON.stringify({ message: userMsg, conversation_id: currentConversationId }),
+          signal: abortController.signal,
+          credentials: 'include'
         });
 
         const data = await res.json();
+        if (data.error) {
+          throw new Error(data.error);
+        }
         const reply = data.reply;
-        conversationId = data.conversation_id;
-        localStorage.setItem('currentConversationId', conversationId);
+        currentConversationId = data.conversation_id;
 
         typingElement.parentElement.parentElement.remove();
         appendMessage(reply, false);
         chatHistory.push({ role: "ai", content: reply });
-        localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-        await fetchConversations(); // Update sidebar after new message
+        await fetchConversations();
 
       } catch (err) {
         if (err.name === 'AbortError') {
-          // Handled above
+          // Abort handled above
         } else {
           typingElement.parentElement.parentElement.remove();
-          appendMessage("Error: Connection nahi ho paya.", false);
+          appendMessage(`Error: ${err.message}`, false);
         }
       } finally {
         isGenerating = false;
@@ -350,11 +356,75 @@
       }
     }
 
-    window.onload = () => {
-      if (chatHistory.length > 0) {
-        chatHistory.forEach((msg, index) => {
-          appendMessage(msg.content, msg.role === "user", false, index);
-        });
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (data.message) {
+        document.getElementById('loginPage').classList.add('hidden');
+        document.getElementById('chatPage').classList.remove('hidden');
+        fetchConversations();
+      } else {
+        alert(data.error);
+      }
+    }
+
+    async function register() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const res = await fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (data.message) {
+        document.getElementById('loginPage').classList.add('hidden');
+        document.getElementById('chatPage').classList.remove('hidden');
+        fetchConversations();
+      } else {
+        alert(data.error);
+      }
+    }
+
+    function googleLogin() {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: 'YOUR_GOOGLE_CLIENT_ID', // Replace with your Google Client ID
+        scope: 'email',
+        callback: async (response) => {
+          const res = await fetch('/google_login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: response.access_token }),
+            credentials: 'include'
+          });
+          const data = await res.json();
+          if (data.message) {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('chatPage').classList.remove('hidden');
+            fetchConversations();
+          } else {
+            alert(data.error);
+          }
+        },
+      });
+      client.requestAccessToken();
+    }
+
+    window.onload = async () => {
+      const res = await fetch('/get_conversations', { credentials: 'include' });
+      const data = await res.json();
+      if (!data.error) {
+        document.getElementById('loginPage').classList.add('hidden');
+        document.getElementById('chatPage').classList.remove('hidden');
+        fetchConversations();
       }
     };
   </script>
