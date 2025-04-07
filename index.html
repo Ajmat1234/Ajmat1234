@@ -95,27 +95,27 @@
       margin-left: auto !important;
       margin-right: 15px !important;
     }
-    /* Theme Toggle Styles */
+    /* Theme Styles */
     .dark-theme {
       background-color: #1a202c;
       color: #e2e8f0;
     }
-    .light-theme {
-      background-color: #ffffff;
-      color: #2d3748;
+    .dark-red-theme {
+      background-color: #2d1b1b; /* Dark red base */
+      color: #f1ebeb; /* Light text for contrast */
     }
-    .light-theme .user-bubble {
-      background-color: #edf2f7;
-      color: #2d3748;
+    .dark-red-theme .user-bubble {
+      background-color: #451717; /* Darker red for user bubbles */
+      color: #f1ebeb;
     }
-    .light-theme .formatted-response strong { color: #6b46c1 !important; }
-    .light-theme .formatted-response em { color: #3182ce !important; }
-    .light-theme .formatted-response u { color: #e53e3e !important; }
-    .light-theme .formatted-response blockquote { border-left-color: #a0aec0; color: #4a5568; }
-    .light-theme .formatted-response pre { background: #f7fafc; color: #2d3748; }
-    .light-theme .bg-gray-900 { background-color: #edf2f7; }
-    .light-theme .bg-white/5 { background-color: #e2e8f0; }
-    .light-theme .bg-white/10 { background-color: #cbd5e0; }
+    .dark-red-theme .formatted-response strong { color: #ff6b6b !important; } /* Reddish bold */
+    .dark-red-theme .formatted-response em { color: #ff8787 !important; } /* Lighter red italic */
+    .dark-red-theme .formatted-response u { color: #ff4d4d !important; } /* Bright red underline */
+    .dark-red-theme .formatted-response blockquote { border-left-color: #a33333; color: #d1a3a3; }
+    .dark-red-theme .formatted-response pre { background: #3c1f1f; color: #f1ebeb; }
+    .dark-red-theme .bg-gray-900 { background-color: #2d1b1b; }
+    .dark-red-theme .bg-white/5 { background-color: #451717; }
+    .dark-red-theme .bg-white/10 { background-color: #5c2525; }
   </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col relative dark-theme">
@@ -152,18 +152,13 @@
     let isAtBottom = true;
 
     function formatText(text) {
-      let formatted = text.trim(); // Extra spaces remove
-      // Handle code blocks (remove them and keep content as plain text)
+      let formatted = text.trim();
       formatted = formatted.replace(/```([\s\S]*?)```/g, (match, p1) => p1.trim());
-      // Handle blockquotes
       formatted = formatted.replace(/^> (.*)$/gm, (match, p1) => `<blockquote>${p1.trim()}</blockquote>`);
-      // Handle headings
       formatted = formatted.replace(/^##\s+(.*)$/gm, '<h2>$1</h2>');
       formatted = formatted.replace(/^###\s+(.*)$/gm, '<h3>$1</h3>');
-      // Handle bold and italic
       formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-      // Handle new lines
       return formatted.replace(/\n/g, '<br>');
     }
 
@@ -173,14 +168,12 @@
 
       const msg = document.createElement("div");
       msg.className = `relative p-3 rounded-2xl select-text text-sm md:text-base shadow-lg break-words whitespace-pre-wrap ${
-        isUser 
-          ? 'bg-white/10 text-white rounded-br-none ml-auto user-bubble' 
-          : 'bg-white/5 text-white rounded-bl-none max-w-[80%]'
+        isUser ? 'bg-white/10 text-white rounded-br-none ml-auto user-bubble' : 'bg-white/5 text-white rounded-bl-none max-w-[80%]'
       }`;
 
       const messageText = document.createElement("div");
       messageText.className = isTyping ? "typing" : "formatted-response";
-      messageText.contentEditable = isUser && !isTyping; // Editable only for user messages
+      messageText.contentEditable = isUser && !isTyping;
 
       if (!isTyping && !isUser) {
         if (text && text.trim().length > 0) {
@@ -212,7 +205,6 @@
       wrapper.appendChild(msg);
       chatContainer.appendChild(wrapper);
 
-      // Auto-scroll only if user is at bottom
       if (isAtBottom) {
         chatContainer.scrollTop = chatContainer.scrollHeight;
       }
@@ -260,19 +252,39 @@
     }
 
     function toggleTheme() {
-      document.body.classList.toggle('dark-theme');
-      document.body.classList.toggle('light-theme');
-      localStorage.setItem('theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
+      if (document.body.classList.contains('dark-theme')) {
+        document.body.classList.remove('dark-theme');
+        document.body.classList.add('dark-red-theme');
+      } else {
+        document.body.classList.remove('dark-red-theme');
+        document.body.classList.add('dark-theme');
+      }
+      localStorage.setItem('theme', document.body.classList.contains('dark-red-theme') ? 'dark-red' : 'dark');
     }
 
     function exportChatToPDF() {
       const element = document.getElementById('chatContainer');
-      html2pdf().from(element).save('jarvis-chat.pdf');
+      const opt = {
+        margin: 1,
+        filename: 'jarvis-chat.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).toPdf().get('pdf').then((pdf) => {
+        const totalPages = pdf.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i);
+          pdf.setFillColor(255, 255, 255); // White background
+          pdf.rect(0, 0, pdf.internal.pageSize.width, pdf.internal.pageSize.height, 'F');
+        }
+        pdf.save();
+      });
     }
 
     async function sendMessage() {
       const userMsg = input.value.trim();
-      if (!userMsg) return; // अगर मैसेज खाली है, तो रिक्वेस्ट न भेजें
+      if (!userMsg) return;
 
       const userIndex = chatHistory.length;
       const messageText = appendMessage(userMsg, true, false, userIndex);
@@ -283,14 +295,21 @@
       const typingElement = appendMessage("Thinking", false, true);
 
       try {
+        console.log("Sending request to:", "https://practice-tvk1.onrender.com/chat");
         const res = await fetch("https://practice-tvk1.onrender.com/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: userMsg }),
           credentials: "include"
         });
+        console.log("Response status:", res.status);
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
 
         const data = await res.json();
+        console.log("Response data:", data);
         typingElement.parentElement.parentElement.remove();
         
         if (data.reply && data.reply.trim().length > 0) {
@@ -310,18 +329,17 @@
         localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
       } catch (err) {
         typingElement.parentElement.parentElement.remove();
-        appendMessage("Error: Unable to connect.", false);
+        console.error("Fetch error:", err);
+        appendMessage(`Error: Unable to connect. Details: ${err.message}`, false);
       }
     }
 
-    // Auto-scroll tracking
     chatContainer.addEventListener('scroll', () => {
-      const threshold = 100; // If within 100px of bottom, consider at bottom
+      const threshold = 100;
       isAtBottom = (chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight) < threshold;
     });
 
-    // Load saved theme
-    if (localStorage.getItem('theme') === 'light') {
+    if (localStorage.getItem('theme') === 'dark-red') {
       toggleTheme();
     }
 
