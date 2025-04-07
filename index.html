@@ -128,8 +128,8 @@
 
     function formatText(text) {
       let formatted = text.trim(); // Extra spaces remove
-      // Handle code blocks
-      formatted = formatted.replace(/```([\s\S]*?)```/g, (match, p1) => `<pre>${p1.trim()}</pre>`);
+      // Handle code blocks (remove them and keep content as plain text)
+      formatted = formatted.replace(/```([\s\S]*?)```/g, (match, p1) => p1.trim());
       // Handle blockquotes
       formatted = formatted.replace(/^> (.*)$/gm, (match, p1) => `<blockquote>${p1.trim()}</blockquote>`);
       // Handle headings
@@ -157,7 +157,6 @@
       messageText.className = isTyping ? "typing" : "formatted-response";
 
       if (!isTyping && !isUser) {
-        // Ensure text is valid before formatting
         if (text && text.trim().length > 0) {
           messageText.innerHTML = formatText(text);
         } else {
@@ -218,7 +217,7 @@
 
     async function sendMessage() {
       const userMsg = input.value.trim();
-      if (!userMsg) return;
+      if (!userMsg) return; // अगर मैसेज खाली है, तो रिक्वेस्ट न भेजें
 
       const userIndex = chatHistory.length;
       appendMessage(userMsg, true, false, userIndex);
@@ -239,16 +238,20 @@
         const data = await res.json();
         typingElement.parentElement.parentElement.remove();
         
-        const aiMsg = appendMessage("", false);
-        let currentText = "";
-        for (let char of (data.reply || "")) {
-          currentText += char;
-          aiMsg.innerHTML = formatText(currentText);
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-          await new Promise(r => setTimeout(r, 10));
+        if (data.reply && data.reply.trim().length > 0) {
+          const aiMsg = appendMessage("", false);
+          let currentText = "";
+          for (let char of data.reply) {
+            currentText += char;
+            aiMsg.innerHTML = formatText(currentText);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            await new Promise(r => setTimeout(r, 10));
+          }
+          chatHistory.push({ role: "ai", content: data.reply });
+        } else {
+          appendMessage("कोई जवाब नहीं।", false);
+          chatHistory.push({ role: "ai", content: "कोई जवाब नहीं।" });
         }
-        
-        chatHistory.push({ role: "ai", content: data.reply || "" });
         localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
       } catch (err) {
         typingElement.parentElement.parentElement.remove();
