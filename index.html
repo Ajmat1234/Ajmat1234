@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>JARVIS Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script> <!-- PDF Export के लिए -->
   <style>
     .typing::after {
       content: "";
@@ -94,18 +95,41 @@
       margin-left: auto !important;
       margin-right: 15px !important;
     }
+    /* Theme Toggle Styles */
+    .dark-theme {
+      background-color: #1a202c;
+      color: #e2e8f0;
+    }
+    .light-theme {
+      background-color: #ffffff;
+      color: #2d3748;
+    }
+    .light-theme .user-bubble {
+      background-color: #edf2f7;
+      color: #2d3748;
+    }
+    .light-theme .formatted-response strong { color: #6b46c1 !important; }
+    .light-theme .formatted-response em { color: #3182ce !important; }
+    .light-theme .formatted-response u { color: #e53e3e !important; }
+    .light-theme .formatted-response blockquote { border-left-color: #a0aec0; color: #4a5568; }
+    .light-theme .formatted-response pre { background: #f7fafc; color: #2d3748; }
+    .light-theme .bg-gray-900 { background-color: #edf2f7; }
+    .light-theme .bg-white/5 { background-color: #e2e8f0; }
+    .light-theme .bg-white/10 { background-color: #cbd5e0; }
   </style>
 </head>
-<body class="bg-black text-white min-h-screen flex flex-col relative">
+<body class="bg-black text-white min-h-screen flex flex-col relative dark-theme">
   <div class="watermark">
     <h1>JARVIS</h1>
     <span>developed by Ajmat</span>
   </div>
   <div class="fixed top-0 left-0 right-0 bg-gray-900 p-2 z-20 flex justify-between items-center">
     <h1 class="text-lg font-bold">JARVIS Chat</h1>
-    <button onclick="startNewChat()" class="bg-red-700 hover:bg-red-800 px-3 py-1 rounded text-white text-sm">
-      New Chat
-    </button>
+    <div>
+      <button onclick="toggleTheme()" class="mr-2 bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-white text-sm">Toggle Theme</button>
+      <button onclick="exportChatToPDF()" class="bg-green-700 hover:bg-green-800 px-3 py-1 rounded text-white text-sm">Export as PDF</button>
+      <button onclick="startNewChat()" class="bg-red-700 hover:bg-red-800 px-3 py-1 rounded text-white text-sm">New Chat</button>
+    </div>
   </div>
   <div class="flex-1 p-4 overflow-y-auto mt-12 relative z-10" id="chatContainer"></div>
   <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
@@ -125,6 +149,7 @@
     const chatContainer = document.getElementById("chatContainer");
     const input = document.getElementById("userInput");
     let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+    let isAtBottom = true;
 
     function formatText(text) {
       let formatted = text.trim(); // Extra spaces remove
@@ -142,7 +167,7 @@
       return formatted.replace(/\n/g, '<br>');
     }
 
-    function appendMessage(text, isUser = false, isTyping = false, index = null) {
+    function appendMessage(text, isUser = false, isTyping = false, index = null, isEdited = false) {
       const wrapper = document.createElement("div");
       wrapper.className = `my-2 flex flex-col ${isUser ? 'items-end' : 'items-start'} w-full message-item`;
 
@@ -155,6 +180,7 @@
 
       const messageText = document.createElement("div");
       messageText.className = isTyping ? "typing" : "formatted-response";
+      messageText.contentEditable = isUser && !isTyping; // Editable only for user messages
 
       if (!isTyping && !isUser) {
         if (text && text.trim().length > 0) {
@@ -173,16 +199,23 @@
         <button onclick="copyToClipboard(this)" class="hover:text-purple-400 transition-colors">Copy</button>
         <button onclick="toggleLike(this)" class="hover:text-pink-400 transition-colors">Like</button>
       `;
-      if (isUser && index !== null) actionButtons += `
-        <button onclick="deleteMessage(${index})" class="hover:text-red-400 transition-colors">Unsend</button>
-      `;
+      if (isUser && index !== null) {
+        actionButtons += `
+          <button onclick="editMessage(${index}, this)" class="hover:text-yellow-400 transition-colors">Edit</button>
+          <button onclick="deleteMessage(${index})" class="hover:text-red-400 transition-colors">Unsend</button>
+        `;
+      }
       
       actions.innerHTML = actionButtons;
       msg.appendChild(messageText);
       if (!isTyping) msg.appendChild(actions);
       wrapper.appendChild(msg);
       chatContainer.appendChild(wrapper);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      // Auto-scroll only if user is at bottom
+      if (isAtBottom) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
 
       return messageText;
     }
@@ -208,6 +241,17 @@
       location.reload();
     }
 
+    function editMessage(index, button) {
+      const wrapper = button.closest(".message-item");
+      const messageText = wrapper.querySelector(".formatted-response");
+      messageText.focus();
+      messageText.addEventListener('blur', function saveEdit() {
+        chatHistory[index].content = messageText.textContent;
+        localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+        messageText.removeEventListener('blur', saveEdit);
+      });
+    }
+
     function startNewChat() {
       if (confirm('Are you sure you want to start a new chat?')) {
         localStorage.removeItem('chatHistory');
@@ -215,12 +259,23 @@
       }
     }
 
+    function toggleTheme() {
+      document.body.classList.toggle('dark-theme');
+      document.body.classList.toggle('light-theme');
+      localStorage.setItem('theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
+    }
+
+    function exportChatToPDF() {
+      const element = document.getElementById('chatContainer');
+      html2pdf().from(element).save('jarvis-chat.pdf');
+    }
+
     async function sendMessage() {
       const userMsg = input.value.trim();
       if (!userMsg) return; // अगर मैसेज खाली है, तो रिक्वेस्ट न भेजें
 
       const userIndex = chatHistory.length;
-      appendMessage(userMsg, true, false, userIndex);
+      const messageText = appendMessage(userMsg, true, false, userIndex);
       chatHistory.push({ role: "user", content: userMsg });
       localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
       input.value = "";
@@ -257,6 +312,17 @@
         typingElement.parentElement.parentElement.remove();
         appendMessage("Error: Unable to connect.", false);
       }
+    }
+
+    // Auto-scroll tracking
+    chatContainer.addEventListener('scroll', () => {
+      const threshold = 100; // If within 100px of bottom, consider at bottom
+      isAtBottom = (chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight) < threshold;
+    });
+
+    // Load saved theme
+    if (localStorage.getItem('theme') === 'light') {
+      toggleTheme();
     }
 
     input.addEventListener('focus', () => setTimeout(() => chatContainer.scrollTop = chatContainer.scrollHeight, 300));
