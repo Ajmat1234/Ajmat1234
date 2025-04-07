@@ -94,34 +94,6 @@
       margin-left: auto !important;
       margin-right: 15px !important;
     }
-    /* Scroll to Bottom Button Style */
-    .scroll-to-bottom {
-      position: fixed;
-      bottom: 80px;
-      right: 20px;
-      background-color: #4b5563;
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      display: none;
-      cursor: pointer;
-      z-index: 20;
-    }
-    .scroll-to-bottom:hover {
-      background-color: #6b7280;
-    }
-    /* Pinned Message Style */
-    .pinned-message {
-      background-color: #1f2937;
-      border-left: 4px solid #4b5563;
-      margin-bottom: 10px;
-      padding: 5px;
-    }
-    .pinned-message:hover {
-      background-color: #2d3748;
-    }
   </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col relative">
@@ -136,16 +108,13 @@
     </button>
   </div>
   <div class="flex-1 p-4 overflow-y-auto mt-12 relative z-10" id="chatContainer"></div>
-  <!-- Scroll to Bottom Button -->
-  <button class="scroll-to-bottom" onclick="scrollToBottom()" id="scrollButton">↓</button>
   <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
     <div class="flex items-center">
-      <!-- Textarea for paragraph support -->
-      <textarea id="userInput"
-                placeholder="Ask anything..."
-                class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500 resize-none"
-                rows="1"
-                onkeypress="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
+      <input id="userInput"
+             type="text"
+             placeholder="Ask anything..."
+             class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
+             onkeypress="if(event.key === 'Enter') sendMessage()" />
       <button onclick="sendMessage()"
               class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
         Send
@@ -155,31 +124,27 @@
   <script>
     const chatContainer = document.getElementById("chatContainer");
     const input = document.getElementById("userInput");
-    const scrollButton = document.getElementById("scrollButton");
     let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
-    let pinnedMessages = JSON.parse(localStorage.getItem('pinnedMessages')) || [];
-
-    // Auto-resize textarea
-    input.addEventListener('input', function() {
-      this.style.height = 'auto';
-      this.style.height = (this.scrollHeight) + 'px';
-    });
 
     function formatText(text) {
-      let formatted = text.trim();
+      let formatted = text.trim(); // Extra spaces remove
+      // Handle code blocks (remove them and keep content as plain text)
       formatted = formatted.replace(/```([\s\S]*?)```/g, (match, p1) => p1.trim());
-      formatted = formatted.replace(/^> (.*)$/gm, '<blockquote>${p1.trim()}</blockquote>');
+      // Handle blockquotes
+      formatted = formatted.replace(/^> (.*)$/gm, (match, p1) => `<blockquote>${p1.trim()}</blockquote>`);
+      // Handle headings
       formatted = formatted.replace(/^##\s+(.*)$/gm, '<h2>$1</h2>');
       formatted = formatted.replace(/^###\s+(.*)$/gm, '<h3>$1</h3>');
+      // Handle bold and italic
       formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+      // Handle new lines
       return formatted.replace(/\n/g, '<br>');
     }
 
-    function appendMessage(text, isUser = false, isTyping = false, index = null, isPinned = false) {
+    function appendMessage(text, isUser = false, isTyping = false, index = null) {
       const wrapper = document.createElement("div");
-      wrapper.className = `my-2 flex flex-col ${isUser ? 'items-end' : 'items-start'} w-full message-item ${isPinned ? 'pinned-message' : ''}`;
-      wrapper.dataset.index = index;
+      wrapper.className = `my-2 flex flex-col ${isUser ? 'items-end' : 'items-start'} w-full message-item`;
 
       const msg = document.createElement("div");
       msg.className = `relative p-3 rounded-2xl select-text text-sm md:text-base shadow-lg break-words whitespace-pre-wrap ${
@@ -211,10 +176,6 @@
       if (isUser && index !== null) actionButtons += `
         <button onclick="deleteMessage(${index})" class="hover:text-red-400 transition-colors">Unsend</button>
       `;
-      // Add Pin Option
-      actionButtons += `
-        <button onclick="togglePin(${index}, this)" class="hover:text-yellow-400 transition-colors">Pin</button>
-      `;
       
       actions.innerHTML = actionButtons;
       msg.appendChild(messageText);
@@ -222,10 +183,6 @@
       wrapper.appendChild(msg);
       chatContainer.appendChild(wrapper);
       chatContainer.scrollTop = chatContainer.scrollHeight;
-
-      if (isPinned) {
-        wrapper.style.order = -1; // Pinned messages at top
-      }
 
       return messageText;
     }
@@ -254,30 +211,13 @@
     function startNewChat() {
       if (confirm('Are you sure you want to start a new chat?')) {
         localStorage.removeItem('chatHistory');
-        localStorage.removeItem('pinnedMessages');
         location.reload();
       }
     }
 
-    function togglePin(index, button) {
-      const message = chatContainer.children[index];
-      const isPinned = message.classList.contains('pinned-message');
-      if (isPinned) {
-        message.classList.remove('pinned-message');
-        pinnedMessages = pinnedMessages.filter(p => p.index !== index);
-        button.textContent = 'Pin';
-      } else {
-        message.classList.add('pinned-message');
-        pinnedMessages.push({ index, content: chatHistory[index].content });
-        button.textContent = 'Unpin';
-      }
-      localStorage.setItem('pinnedMessages', JSON.stringify(pinnedMessages));
-      message.addEventListener('click', () => chatContainer.scrollTo({ top: message.offsetTop, behavior: 'smooth' }));
-    }
-
     async function sendMessage() {
       const userMsg = input.value.trim();
-      if (!userMsg) return;
+      if (!userMsg) return; // अगर मैसेज खाली है, तो रिक्वेस्ट न भेजें
 
       const userIndex = chatHistory.length;
       appendMessage(userMsg, true, false, userIndex);
@@ -319,32 +259,8 @@
       }
     }
 
-    // Scroll to Bottom Functionality
-    function scrollToBottom() {
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-      scrollButton.style.display = 'none';
-    }
-
-    chatContainer.addEventListener('scroll', () => {
-      if (chatContainer.scrollTop < chatContainer.scrollHeight - chatContainer.clientHeight - 100) {
-        scrollButton.style.display = 'block';
-      } else {
-        scrollButton.style.display = 'none';
-      }
-    });
-
     input.addEventListener('focus', () => setTimeout(() => chatContainer.scrollTop = chatContainer.scrollHeight, 300));
-    window.onload = () => {
-      chatHistory.forEach((msg, index) => appendMessage(msg.content, msg.role === "user", false, index));
-      pinnedMessages.forEach(p => {
-        const msg = chatContainer.children[p.index];
-        if (msg) {
-          msg.classList.add('pinned-message');
-          msg.querySelector('.hover\\:text-yellow-400').textContent = 'Unpin';
-          msg.addEventListener('click', () => chatContainer.scrollTo({ top: msg.offsetTop, behavior: 'smooth' }));
-        }
-      });
-    };
+    window.onload = () => chatHistory.forEach((msg, index) => appendMessage(msg.content, msg.role === "user", false, index));
   </script>
 </body>
 </html>
