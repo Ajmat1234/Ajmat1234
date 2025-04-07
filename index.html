@@ -6,120 +6,66 @@
   <title>JARVIS Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .typing::after {
-      content: "";
-      animation: dots 1s steps(3, end) infinite;
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(to bottom, #1a1a1a, #000000);
     }
-    @keyframes dots {
-      0%   { content: "."; }
-      33%  { content: ".."; }
-      66%  { content: "..."; }
+    .chat-bubble {
+      max-width: 75%;
+      margin-bottom: 15px;
+      padding: 12px 18px;
+      border-radius: 15px;
+      word-wrap: break-word;
+      position: relative;
     }
-
-    ::-webkit-scrollbar {
-      width: 6px;
+    .user-bubble {
+      background: linear-gradient(to right, #4b0082, #800080);
+      margin-left: auto;
     }
-    ::-webkit-scrollbar-thumb {
-      background: #555;
-      border-radius: 10px;
+    .ai-bubble {
+      background: linear-gradient(to right, #2e2e2e, #4a4a4a);
     }
-
-    .copy-notification {
-      animation: slideIn 0.3s ease-out;
-    }
-    @keyframes slideIn {
-      from { transform: translateX(100%); }
-      to   { transform: translateX(0); }
-    }
-
-    .liked {
-      color: #ec4899 !important;
-      transform: scale(1.2);
-      transition: all 0.3s ease;
-    }
-
-    .formatted-response h2 {
-      font-size: 1.5rem !important;
-      color: #f472b6 !important;
-      margin: 1.5rem 0 0.75rem !important;
-      border-bottom: 2px solid #f472b6;
-      padding-bottom: 0.25rem;
-      display: inline-block;
-    }
-    .formatted-response h3 {
-      font-size: 1.25rem !important;
-      color: #34d399 !important;
-      margin: 1rem 0 0.5rem !important;
-    }
-    .formatted-response strong { color: #a56ef5 !important; }
-    .formatted-response em { color: #60a5fa !important; }
-    .formatted-response u { color: #f87171 !important; }
-    .formatted-response blockquote {
-      border-left: 4px solid #4b5563;
-      padding-left: 1rem;
-      color: #9ca3af;
-      font-style: italic;
-      margin: 1rem 0;
-    }
-    .formatted-response pre {
-      background: #1f2937;
-      padding: 0.75rem;
-      border-radius: 0.5rem;
-      overflow-x: auto;
-      font-family: monospace;
-      color: #f3f4f6;
-    }
-
-    @keyframes slideInMsg {
-      from { transform: translateX(20px); opacity: 0; }
-      to   { transform: translateX(0); opacity: 1; }
-    }
-    .message-item {
-      animation: slideInMsg 0.3s ease-out;
-    }
-
     .watermark {
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      opacity: 0.02;
+      text-align: center;
+      opacity: 0.1;
+      pointer-events: none;
       z-index: 0;
     }
     .watermark h1 {
-      font-size: 6rem;
+      font-size: 5rem;
       font-weight: bold;
+      color: #ffffff;
+      margin: 0;
     }
     .watermark span {
-      display: block;
-      font-size: 0.8rem;
-      margin-top: 0.5rem;
+      font-size: 1.5rem;
+      color: #cccccc;
     }
-
-    /* यूजर मैसेज के लिए नई स्टाइल */
-    .user-bubble {
-      max-width: fit-content !important;
-      margin-left: auto !important;
-      margin-right: 15px !important;
+    .action-buttons {
+      opacity: 0;
+      transition: opacity 0.2s ease-in-out;
+    }
+    .chat-bubble:hover .action-buttons {
+      opacity: 1;
     }
   </style>
 </head>
 <body class="bg-black text-white min-h-screen flex flex-col relative">
-
   <div class="watermark">
     <h1>JARVIS</h1>
     <span>developed by Ajmat</span>
   </div>
-
   <div class="fixed top-0 left-0 right-0 bg-gray-900 p-2 z-20 flex justify-between items-center">
     <h1 class="text-lg font-bold">JARVIS Chat</h1>
     <button onclick="startNewChat()" class="bg-red-700 hover:bg-red-800 px-3 py-1 rounded text-white text-sm">
       New Chat
     </button>
   </div>
-
   <div class="flex-1 p-4 overflow-y-auto mt-12 relative z-10" id="chatContainer"></div>
-
   <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
     <div class="flex items-center">
       <input id="userInput"
@@ -133,102 +79,66 @@
       </button>
     </div>
   </div>
-
   <script>
     const chatContainer = document.getElementById("chatContainer");
     const input = document.getElementById("userInput");
     let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
 
     function formatText(text) {
-      // सबसे पहले HTML tags (जैसे <span>, <pre>) को 그대로 preserve करें
-      // फिर simple markdown formatting apply करें
-      let formatted = text;
-
-      // Code blocks (```code```)
-      formatted = formatted.replace(/```([\s\S]*?)```/g, (match, p1) => {
-        return `<pre>${p1.trim()}</pre>`;
-      });
-
-      // Blockquotes (lines starting with > )
-      formatted = formatted.replace(/^> (.*)$/gm, (match, p1) => {
-        return `<blockquote>${p1.trim()}</blockquote>`;
-      });
-
-      // Headings: H2 and H3
-      formatted = formatted.replace(/^##\s+(.*)$/gm, '<h2>$1</h2>');
-      formatted = formatted.replace(/^###\s+(.*)$/gm, '<h3>$1</h3>');
-
-      // Bold and Italic
-      formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-      return formatted.replace(/\n/g, '<br>');
+      text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+      text = text.replace(/### (.*?)\n/g, '<h3>$1</h3>');
+      text = text.replace(/## (.*?)\n/g, '<h2>$1</h2>');
+      text = text.replace(/> (.*?)\n/g, '<blockquote>$1</blockquote>');
+      text = text.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+      text = text.replace(/<span style="color: #(.*?)">(.*?)<\/span>/g, '<span style="color: #$1">$2</span>');
+      return text;
     }
 
     function appendMessage(text, isUser = false, isTyping = false, index = null) {
+      const div = document.createElement("div");
+      div.className = `chat-bubble ${isUser ? 'user-bubble' : 'ai-bubble'}`;
+      if (isTyping) div.innerHTML = '<em>Typing...</em>';
+      else div.innerHTML = formatText(text);
+      if (!isTyping && !isUser) {
+        div.innerHTML += `
+          <div class="action-buttons flex space-x-2 mt-2">
+            <button onclick="copyToClipboard(this)" class="text-xs text-gray-300 hover:text-white">Copy</button>
+            <button onclick="toggleLike(this)" class="text-xs text-gray-300 hover:text-yellow-400">Like</button>
+            <button onclick="deleteMessage(${index})" class="text-xs text-gray-300 hover:text-red-400">Delete</button>
+          </div>`;
+      }
       const wrapper = document.createElement("div");
-      wrapper.className = `my-2 flex flex-col ${isUser ? 'items-end' : 'items-start'} w-full message-item`;
-
-      const msg = document.createElement("div");
-      msg.className = `relative p-3 rounded-2xl select-text text-sm md:text-base shadow-lg break-words whitespace-pre-wrap ${
-        isUser 
-          ? 'bg-white/10 text-white rounded-br-none ml-auto user-bubble' 
-          : 'bg-white/5 text-white rounded-bl-none max-w-[80%]'
-      }`;
-
-      const messageText = document.createElement("div");
-      messageText.className = isTyping ? "typing" : "formatted-response";
-
-      if (!isTyping && !isUser) messageText.innerHTML = formatText(text);
-      else messageText.textContent = text;
-
-      const actions = document.createElement("div");
-      actions.className = "text-xs mt-1 text-gray-400 flex gap-2";
-      
-      let actionButtons = `
-        <button onclick="copyToClipboard(this)" class="hover:text-purple-400 transition-colors">Copy</button>
-        <button onclick="toggleLike(this)" class="hover:text-pink-400 transition-colors">Like</button>
-      `;
-      if (isUser && index !== null) actionButtons += `
-        <button onclick="deleteMessage(${index})" class="hover:text-red-400 transition-colors">Unsend</button>
-      `;
-      
-      actions.innerHTML = actionButtons;
-      msg.appendChild(messageText);
-      if (!isTyping) msg.appendChild(actions);
-      wrapper.appendChild(msg);
+      wrapper.className = isUser ? "flex justify-end" : "flex justify-start";
+      wrapper.appendChild(div);
       chatContainer.appendChild(wrapper);
       chatContainer.scrollTop = chatContainer.scrollHeight;
-
-      return messageText;
+      return div;
     }
 
     function copyToClipboard(button) {
-      const messageElement = button.closest(".message-item").querySelector(".formatted-response, .typing");
-      if (!messageElement) return;
-
-      navigator.clipboard.writeText(messageElement.textContent).then(() => {
-        const notification = document.createElement('div');
-        notification.textContent = '✓ Copied!';
-        notification.className = 'fixed bottom-20 right-4 bg-green-500/90 text-white px-4 py-2 rounded-lg text-sm copy-notification';
-        document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 2000);
-      });
+      const text = button.parentElement.parentElement.innerText.replace(/Copy\s*Like\s*Delete/, '').trim();
+      navigator.clipboard.writeText(text);
+      button.innerText = "Copied!";
+      setTimeout(() => button.innerText = "Copy", 2000);
     }
 
-    function toggleLike(button) { button.classList.toggle('liked'); }
+    function toggleLike(button) {
+      button.classList.toggle("text-yellow-400");
+      button.innerText = button.classList.contains("text-yellow-400") ? "Liked" : "Like";
+    }
 
     function deleteMessage(index) {
       chatHistory.splice(index, 1);
       localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-      location.reload();
+      chatContainer.innerHTML = '';
+      chatHistory.forEach((msg, i) => appendMessage(msg.content, msg.role === "user", false, i));
     }
 
     function startNewChat() {
-      if (confirm('Are you sure you want to start a new chat?')) {
-        localStorage.removeItem('chatHistory');
-        location.reload();
-      }
+      chatHistory = [];
+      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+      chatContainer.innerHTML = '';
     }
 
     async function sendMessage() {
@@ -248,6 +158,7 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: userMsg }),
+          credentials: "include" // Yeh change kiya hai cookies bhejne ke liye
         });
 
         const data = await res.json();
@@ -274,4 +185,4 @@
     window.onload = () => chatHistory.forEach((msg, index) => appendMessage(msg.content, msg.role === "user", false, index));
   </script>
 </body>
-</html>
+  </html>
