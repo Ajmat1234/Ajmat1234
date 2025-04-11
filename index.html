@@ -3,146 +3,264 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AI GF - Pari</title>
+  <title>JARVIS Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body {
-      background: #1a1a1a;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
+    .typing::after {
+      content: "";
+      animation: dots 1s steps(3, end) infinite;
     }
-    .chat-container {
-      text-align: center;
-      padding: 20px;
+    @keyframes dots {
+      0%   { content: "."; }
+      33%  { content: ".."; }
+      66%  { content: "..."; }
     }
-    .dots {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin: 20px 0;
+    ::-webkit-scrollbar {
+      width: 6px;
     }
-    .dot {
-      width: 10px;
-      height: 10px;
-      background: #fff;
-      border-radius: 50%;
-      animation: pulse 1.5s infinite;
+    ::-webkit-scrollbar-thumb {
+      background: #555;
+      border-radius: 10px;
     }
-    .dot:nth-child(2) { animation-delay: 0.2s; }
-    .dot:nth-child(3) { animation-delay: 0.4s; }
-    .dot:nth-child(4) { animation-delay: 0.6s; }
-    @keyframes pulse {
-      0% { opacity: 0.3; }
-      50% { opacity: 1; }
-      100% { opacity: 0.3; }
+    .copy-notification {
+      animation: slideIn 0.3s ease-out;
     }
-    button {
-      background: #333;
-      color: #fff;
-      border: none;
-      padding: 10px 20px;
-      cursor: pointer;
-      margin: 5px;
+    @keyframes slideIn {
+      from { transform: translateX(100%); }
+      to   { transform: translateX(0); }
     }
-    button:hover { background: #555; }
-    #mic-btn { font-size: 20px; }
-    #status, #ai-response { margin: 10px 0; }
+    .liked {
+      color: #ec4899 !important;
+      transform: scale(1.2);
+      transition: all 0.3s ease;
+    }
+    .formatted-response h2 {
+      font-size: 1.5rem !important;
+      color: #f472b6 !important;
+      margin: 1.5rem 0 0.75rem !important;
+      border-bottom: 2px solid #f472b6;
+      padding-bottom: 0.25rem;
+      display: inline-block;
+    }
+    .formatted-response h3 {
+      font-size: 1.25rem !important;
+      color: #34d399 !important;
+      margin: 1rem 0 0.5rem !important;
+    }
+    .formatted-response strong { color: #a56ef5 !important; }
+    .formatted-response em { color: #60a5fa !important; }
+    .formatted-response u { color: #f87171 !important; }
+    .formatted-response blockquote {
+      border-left: 4px solid #4b5563;
+      padding-left: 1rem;
+      color: #9ca3af;
+      font-style: italic;
+      margin: 1rem 0;
+    }
+    .formatted-response pre {
+      background: #1f2937;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      font-family: monospace;
+      color: #f3f4f6;
+    }
+    @keyframes slideInMsg {
+      from { transform: translateX(20px); opacity: 0; }
+      to   { transform: translateX(0); opacity: 1; }
+    }
+    .message-item {
+      animation: slideInMsg 0.3s ease-out;
+    }
+    .watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.02;
+      z-index: 0;
+    }
+    .watermark h1 {
+      font-size: 6rem;
+      font-weight: bold;
+    }
+    .watermark span {
+      display: block;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+    }
+    .user-bubble {
+      max-width: fit-content !important;
+      margin-left: auto !important;
+      margin-right: 15px !important;
+    }
   </style>
 </head>
-<body>
-  <div class="chat-container">
-    <h2>AI GF - Pari</h2>
-    <div id="dots" class="dots" style="display: none;">
-      <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
-    </div>
-    <p id="status">Status: Connecting...</p>
-    <p id="ai-response"></p>
-    <button id="mic-btn" title="Tap to interrupt">🎙️</button>
-    <button id="new-chat">New Chat</button>
+<body class="bg-black text-white min-h-screen flex flex-col relative">
+  <div class="watermark">
+    <h1>JARVIS</h1>
+    <span>developed by Ajmat</span>
   </div>
-
-  <!-- Coqui TTS -->
-  <script src="https://cdn.jsdelivr.net/npm/@coqui-ai/tts@latest/dist/tts.min.js"></script>
-
+  <div class="fixed top-0 left-0 right-0 bg-gray-900 p-2 z-20 flex justify-between items-center">
+    <h1 class="text-lg font-bold">JARVIS Chat</h1>
+    <button onclick="startNewChat()" class="bg-red-700 hover:bg-red-800 px-3 py-1 rounded text-white text-sm">
+      New Chat
+    </button>
+  </div>
+  <div class="flex-1 p-4 overflow-y-auto mt-12 relative z-10" id="chatContainer"></div>
+  <div class="p-4 bg-gray-900 sticky bottom-0 z-10">
+    <div class="flex items-center">
+      <input id="userInput"
+             type="text"
+             placeholder="Ask anything..."
+             class="flex-1 px-4 py-2 rounded-l bg-gray-800 border border-gray-700 text-white outline-none focus:border-purple-500"
+             onkeypress="if(event.key === 'Enter') sendMessage()" />
+      <button onclick="sendMessage()"
+              class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 px-4 py-2 rounded-r text-white font-semibold transition duration-300 ease-in-out">
+        Send
+      </button>
+    </div>
+  </div>
   <script>
-    const ws = new WebSocket("wss://work-4ec6.onrender.com/ws");
-    const statusText = document.getElementById("status");
-    const aiText = document.getElementById("ai-response");
-    const dots = document.getElementById("dots");
-    const micBtn = document.getElementById("mic-btn");
-    const newChatBtn = document.getElementById("new-chat");
-    let recognition;
+    const chatContainer = document.getElementById("chatContainer");
+    const input = document.getElementById("userInput");
+    let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
 
-    ws.onopen = () => {
-      statusText.textContent = "Status: Connected to Pari...";
-      startRecognition();
-    };
-
-    ws.onmessage = async (event) => {
-      const msg = event.data;
-      aiText.textContent = "Pari: " + msg;
-      await speakWithCoqui(msg); // Real-time audio
-      dots.style.display = "none";
-    };
-
-    async function speakWithCoqui(text) {
-      const speaker = "vits/ljspeech"; // Female voice
-      try {
-        const audio = await window.TTS.speak({
-          text: text,
-          voice: speaker,
-          streaming: true, // Real-time streaming
-          sampleRate: 22050
-        });
-        audio.play(); // Play the audio stream
-      } catch (error) {
-        console.error("TTS Error:", error);
-        statusText.textContent = "TTS Error, trying again...";
-      }
+    function formatText(text) {
+      let formatted = text.trim(); // Extra spaces remove
+      // Handle code blocks (remove them and keep content as plain text)
+      formatted = formatted.replace(/```([\s\S]*?)```/g, (match, p1) => p1.trim());
+      // Handle blockquotes
+      formatted = formatted.replace(/^> (.*)$/gm, (match, p1) => `<blockquote>${p1.trim()}</blockquote>`);
+      // Handle headings
+      formatted = formatted.replace(/^##\s+(.*)$/gm, '<h2>$1</h2>');
+      formatted = formatted.replace(/^###\s+(.*)$/gm, '<h3>$1</h3>');
+      // Handle bold and italic
+      formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+      // Handle new lines
+      return formatted.replace(/\n/g, '<br>');
     }
 
-    function startRecognition() {
-      if (!('webkitSpeechRecognition' in window)) {
-        alert('Speech Recognition not supported');
-        return;
-      }
-      recognition = new webkitSpeechRecognition();
-      recognition.lang = 'hi-IN';
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-      recognition.continuous = true;
-      recognition.onresult = (event) => {
-        const transcript = event.results[event.results.length - 1][0].transcript;
-        statusText.textContent = "You: " + transcript;
-        ws.send(transcript);
-        dots.style.display = "flex";
-      };
-      recognition.onerror = (event) => {
-        console.error("Speech Error:", event);
-        statusText.textContent = "Speech Error: " + event.error;
-      };
-      recognition.start();
-    }
+    function appendMessage(text, isUser = false, isTyping = false, index = null) {
+      const wrapper = document.createElement("div");
+      wrapper.className = `my-2 flex flex-col ${isUser ? 'items-end' : 'items-start'} w-full message-item`;
 
-    micBtn.onclick = () => {
-      if (recognition) {
-        recognition.stop();
-        micBtn.title = "Tap to start";
+      const msg = document.createElement("div");
+      msg.className = `relative p-3 rounded-2xl select-text text-sm md:text-base shadow-lg break-words whitespace-pre-wrap ${
+        isUser 
+          ? 'bg-white/10 text-white rounded-br-none ml-auto user-bubble' 
+          : 'bg-white/5 text-white rounded-bl-none max-w-[80%]'
+      }`;
+
+      const messageText = document.createElement("div");
+      messageText.className = isTyping ? "typing" : "formatted-response";
+
+      if (!isTyping && !isUser) {
+        if (text && text.trim().length > 0) {
+          messageText.innerHTML = formatText(text);
+        } else {
+          messageText.textContent = "कोई जवाब नहीं।";
+        }
       } else {
-        startRecognition();
-        micBtn.title = "Tap to interrupt";
+        messageText.textContent = text;
       }
-    };
 
-    newChatBtn.onclick = () => {
-      ws.send("New chat");
-      aiText.textContent = "";
-      statusText.textContent = "Starting new chat...";
-    };
+      const actions = document.createElement("div");
+      actions.className = "text-xs mt-1 text-gray-400 flex gap-2";
+      
+      let actionButtons = `
+        <button onclick="copyToClipboard(this)" class="hover:text-purple-400 transition-colors">Copy</button>
+        <button onclick="toggleLike(this)" class="hover:text-pink-400 transition-colors">Like</button>
+      `;
+      if (isUser && index !== null) actionButtons += `
+        <button onclick="deleteMessage(${index})" class="hover:text-red-400 transition-colors">Unsend</button>
+      `;
+      
+      actions.innerHTML = actionButtons;
+      msg.appendChild(messageText);
+      if (!isTyping) msg.appendChild(actions);
+      wrapper.appendChild(msg);
+      chatContainer.appendChild(wrapper);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      return messageText;
+    }
+
+    function copyToClipboard(button) {
+      const messageElement = button.closest(".message-item").querySelector(".formatted-response, .typing");
+      if (!messageElement) return;
+
+      navigator.clipboard.writeText(messageElement.textContent).then(() => {
+        const notification = document.createElement('div');
+        notification.textContent = '✓ Copied!';
+        notification.className = 'fixed bottom-20 right-4 bg-green-500/90 text-white px-4 py-2 rounded-lg text-sm copy-notification';
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 2000);
+      });
+    }
+
+    function toggleLike(button) { button.classList.toggle('liked'); }
+
+    function deleteMessage(index) {
+      chatHistory.splice(index, 1);
+      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+      location.reload();
+    }
+
+    function startNewChat() {
+      if (confirm('Are you sure you want to start a new chat?')) {
+        localStorage.removeItem('chatHistory');
+        location.reload();
+      }
+    }
+
+    async function sendMessage() {
+      const userMsg = input.value.trim();
+      if (!userMsg) return; // अगर मैसेज खाली है, तो रिक्वेस्ट न भेजें
+
+      const userIndex = chatHistory.length;
+      appendMessage(userMsg, true, false, userIndex);
+      chatHistory.push({ role: "user", content: userMsg });
+      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+      input.value = "";
+
+      const typingElement = appendMessage("Thinking", false, true);
+
+      try {
+        const res = await fetch("https://practice-tvk1.onrender.com/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: userMsg }),
+          credentials: "include"
+        });
+
+        const data = await res.json();
+        typingElement.parentElement.parentElement.remove();
+        
+        if (data.reply && data.reply.trim().length > 0) {
+          const aiMsg = appendMessage("", false);
+          let currentText = "";
+          for (let char of data.reply) {
+            currentText += char;
+            aiMsg.innerHTML = formatText(currentText);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            await new Promise(r => setTimeout(r, 10));
+          }
+          chatHistory.push({ role: "ai", content: data.reply });
+        } else {
+          appendMessage("कोई जवाब नहीं।", false);
+          chatHistory.push({ role: "ai", content: "कोई जवाब नहीं।" });
+        }
+        localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+      } catch (err) {
+        typingElement.parentElement.parentElement.remove();
+        appendMessage("Error: Unable to connect.", false);
+      }
+    }
+
+    input.addEventListener('focus', () => setTimeout(() => chatContainer.scrollTop = chatContainer.scrollHeight, 300));
+    window.onload = () => chatHistory.forEach((msg, index) => appendMessage(msg.content, msg.role === "user", false, index));
   </script>
 </body>
 </html>
